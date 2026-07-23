@@ -1,0 +1,34 @@
+# Visit https://soloterm.com to learn more
+name: hookrail
+icon: null
+processes:
+  Postgres:
+    command: infra/postgres/launch.sh
+    auto_start: false
+    auto_restart: false
+    env: {}
+  Redis:
+    command: infra/redis/launch.sh
+    auto_start: false
+    auto_restart: false
+    env: {}
+  Web:
+    command: bin/rails server
+    auto_start: true
+    auto_restart: false
+    restart_when_changed:
+      - Gemfile.lock
+    env:
+      PORT: "3000"
+  CSS:
+    command: bin/rails tailwindcss:watch
+    auto_start: true
+    auto_restart: false
+    env: {}
+  Jobs:
+    command: bin/jobs
+    auto_start: false
+    auto_restart: false
+    restart_when_changed:
+      - Gemfile.lock
+    env: {}
