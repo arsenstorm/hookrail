@@ -2,7 +2,7 @@ require "test_helper"
 
 class IngestFlowTest < ActionDispatch::IntegrationTest
   test "stores an incoming webhook and returns 200" do
-    source = Source.create!(name: "Test Source")
+    source = Source.create!(name: "Test Source", project: create_test_project!)
 
     assert_difference -> { source.events.count }, 1 do
       post "/ingest/#{source.token}?foo=bar",
@@ -19,7 +19,7 @@ class IngestFlowTest < ActionDispatch::IntegrationTest
   end
 
   test "any HTTP method is accepted" do
-    source = Source.create!(name: "Test Source")
+    source = Source.create!(name: "Test Source", project: create_test_project!)
 
     get "/ingest/#{source.token}"
 

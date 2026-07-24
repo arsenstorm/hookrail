@@ -1,4 +1,5 @@
 class Source < ApplicationRecord
+  belongs_to :project
   has_many :events, dependent: :destroy
   has_many :connections, dependent: :destroy
 

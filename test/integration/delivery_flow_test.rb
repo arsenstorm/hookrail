@@ -4,9 +4,10 @@ class DeliveryFlowTest < ActionDispatch::IntegrationTest
   include ActiveJob::TestHelper
 
   def setup
-    @source = Source.create!(name: "Src")
-    @destination = Destination.create!(name: "Dest", url: "https://example.test/hook")
-    @connection = Connection.create!(source: @source, destination: @destination, active: true)
+    @project = create_test_project!
+    @source = Source.create!(name: "Src", project: @project)
+    @destination = Destination.create!(name: "Dest", url: "https://example.test/hook", project: @project)
+    @connection = Connection.create!(source: @source, destination: @destination, active: true, project: @project)
   end
 
   def ingest!(body: '{"a":1}', headers: { "Content-Type" => "application/json" })
@@ -69,8 +70,8 @@ class DeliveryFlowTest < ActionDispatch::IntegrationTest
   end
 
   test "fans out to every active connection" do
-    dest2 = Destination.create!(name: "Dest2", url: "https://example.test/hook2")
-    Connection.create!(source: @source, destination: dest2, active: true)
+    dest2 = Destination.create!(name: "Dest2", url: "https://example.test/hook2", project: @project)
+    Connection.create!(source: @source, destination: dest2, active: true, project: @project)
     s1 = stub_request(:post, @destination.url).to_return(status: 200)
     s2 = stub_request(:post, dest2.url).to_return(status: 200)
     ingest!

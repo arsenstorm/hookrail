@@ -1,4 +1,5 @@
 class Destination < ApplicationRecord
+  belongs_to :project
   has_many :connections, dependent: :destroy
 
   validates :name, presence: true

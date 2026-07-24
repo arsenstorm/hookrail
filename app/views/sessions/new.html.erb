@@ -1,0 +1,6 @@
+<div class="mx-auto max-w-sm py-24 text-center">
+  <h1 class="text-2xl font-semibold mb-6">Sign in to Hookrail</h1>
+  <%# data-turbo=false: OAuth needs a full-page redirect to github.com; Turbo's fetch can't follow cross-origin. %>
+  <%= button_to "Sign in with GitHub", "/auth/github", method: :post, data: { turbo: false },
+        class: "inline-flex w-full justify-center rounded-md bg-gray-900 px-4 py-2 text-white font-medium hover:bg-gray-800" %>
+</div>

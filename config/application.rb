@@ -1,5 +1,9 @@
 require_relative "boot"
 
+# Load local dev/test secrets (GitHub OAuth creds, etc.) from a gitignored .env.
+# Not loaded in production, where real env vars are set by the platform.
+require "dotenv/load" unless ENV["RAILS_ENV"] == "production"
+
 require "rails/all"
 
 # Require the gems listed in Gemfile, including any gems
