@@ -1,0 +1,61 @@
+<% content_for :title, "Event ##{@event.id}" %>
+<div class="w-full max-w-4xl mx-auto py-16">
+  <%= link_to "← Events", events_path, class: "text-sm text-gray-500 hover:text-gray-700" %>
+  <h1 class="text-2xl font-semibold mt-2 mb-6"><%= @event.http_method %> <%= @event.path %></h1>
+
+  <section class="mb-8">
+    <h2 class="text-sm font-semibold text-gray-500 uppercase mb-2">Request</h2>
+    <dl class="text-sm grid grid-cols-[8rem_1fr] gap-y-1">
+      <dt class="text-gray-500">Received</dt><dd><%= @event.received_at.strftime("%Y-%m-%d %H:%M:%S") %></dd>
+      <dt class="text-gray-500">Method</dt><dd><%= @event.http_method %></dd>
+      <dt class="text-gray-500">Path</dt><dd><%= @event.path %></dd>
+      <dt class="text-gray-500">Query</dt><dd><%= @event.query_string %></dd>
+    </dl>
+  </section>
+
+  <section class="mb-8">
+    <h2 class="text-sm font-semibold text-gray-500 uppercase mb-2">Headers</h2>
+    <pre class="bg-gray-50 rounded p-3 text-xs overflow-x-auto"><%= JSON.pretty_generate(@event.headers) %></pre>
+  </section>
+
+  <section class="mb-8">
+    <h2 class="text-sm font-semibold text-gray-500 uppercase mb-2">Body</h2>
+    <pre class="bg-gray-50 rounded p-3 text-xs overflow-x-auto"><%= @event.body %></pre>
+  </section>
+
+  <section>
+    <h2 class="text-sm font-semibold text-gray-500 uppercase mb-2">Delivery attempts</h2>
+    <% if @event.attempts.empty? %>
+      <p class="text-gray-500 text-sm">No delivery attempts.</p>
+    <% else %>
+      <div class="space-y-3">
+        <% @event.attempts.sort_by(&:attempted_at).each do |attempt| %>
+          <div class="border rounded p-3 text-sm">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-medium"><%= attempt.connection.source.name %> → <%= attempt.connection.destination.name %></span>
+              <span class="text-gray-500"><%= attempt.status %></span>
+            </div>
+            <dl class="grid grid-cols-[8rem_1fr] gap-y-0.5 text-xs text-gray-600">
+              <dt>Attempt #</dt><dd><%= attempt.attempt_number %></dd>
+              <dt>HTTP status</dt><dd><%= attempt.response_status %></dd>
+              <dt>Duration</dt><dd><%= attempt.duration_ms %> ms</dd>
+              <dt>At</dt><dd><%= attempt.attempted_at.strftime("%Y-%m-%d %H:%M:%S") %></dd>
+            </dl>
+            <% if attempt.error.present? %>
+              <div class="mt-2">
+                <div class="text-xs text-gray-500">Error</div>
+                <pre class="bg-red-50 text-red-800 rounded p-2 text-xs overflow-x-auto"><%= attempt.error %></pre>
+              </div>
+            <% end %>
+            <% if attempt.response_body.present? %>
+              <div class="mt-2">
+                <div class="text-xs text-gray-500">Response body</div>
+                <pre class="bg-gray-50 rounded p-2 text-xs overflow-x-auto"><%= attempt.response_body %></pre>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+  </section>
+</div>

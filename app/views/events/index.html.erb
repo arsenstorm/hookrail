@@ -1,0 +1,34 @@
+<% content_for :title, "Events" %>
+<div class="w-full max-w-4xl mx-auto py-16">
+  <div class="flex items-center justify-between mb-6">
+    <h1 class="text-2xl font-semibold">Events</h1>
+    <%= link_to "Dashboard", root_path, class: "text-sm text-gray-500 hover:text-gray-700" %>
+  </div>
+
+  <% if @events.empty? %>
+    <p class="text-gray-500">No events yet.</p>
+  <% else %>
+    <table class="w-full text-sm">
+      <thead class="text-left text-gray-500 border-b">
+        <tr>
+          <th class="py-2 font-medium">Received</th>
+          <th class="py-2 font-medium">Method</th>
+          <th class="py-2 font-medium">Source</th>
+          <th class="py-2 font-medium">Delivery</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @events.each do |event| %>
+          <tr class="border-b hover:bg-gray-50">
+            <td class="py-2">
+              <%= link_to event.received_at.strftime("%Y-%m-%d %H:%M:%S"), event_path(event), class: "text-blue-600 hover:underline" %>
+            </td>
+            <td class="py-2"><%= event.http_method %></td>
+            <td class="py-2"><%= event.source.name %></td>
+            <td class="py-2"><%= delivery_summary(event) %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  <% end %>
+</div>
