@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_25_193000) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_25_210000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -86,6 +86,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_25_193000) do
   create_table "events", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
+    t.string "dedupe_key"
+    t.boolean "duplicate", default: false, null: false
     t.jsonb "headers", default: {}, null: false
     t.string "http_method", null: false
     t.string "path"
@@ -93,6 +95,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_25_193000) do
     t.datetime "received_at", null: false
     t.bigint "source_id", null: false
     t.datetime "updated_at", null: false
+    t.index ["source_id", "dedupe_key", "received_at"], name: "index_events_on_dedupe_lookup", where: "(dedupe_key IS NOT NULL)"
     t.index ["source_id", "received_at"], name: "index_events_on_source_id_and_received_at"
     t.index ["source_id"], name: "index_events_on_source_id"
   end
@@ -274,6 +277,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_25_193000) do
 
   create_table "sources", force: :cascade do |t|
     t.datetime "created_at", null: false
+    t.jsonb "dedupe", default: {}, null: false
     t.string "name", null: false
     t.bigint "project_id", null: false
     t.string "token", null: false

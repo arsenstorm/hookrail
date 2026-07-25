@@ -106,5 +106,29 @@
     </details>
   </section>
 
+  <section class="border-t pt-4 space-y-4">
+    <div>
+      <h2 class="text-sm font-semibold text-gray-700">Deduplication</h2>
+      <p class="text-xs text-gray-500 mt-1">
+        Optional. Drops repeats of the same event inside a time window. Leave the window blank to disable
+        deduplication and deliver every request.
+      </p>
+    </div>
+
+    <div>
+      <%= f.label :dedupe_window, "Dedupe window (seconds)", class: "block text-sm font-medium text-gray-700 mb-1" %>
+      <%= f.number_field :dedupe_window, min: 1, max: 86400, placeholder: "Off",
+            class: "w-full rounded-md border border-gray-300 px-3 py-2 text-sm" %>
+      <p class="text-xs text-gray-500 mt-1">Blank disables deduplication. Repeats of the same event within this window are marked duplicates and never delivered.</p>
+    </div>
+
+    <div>
+      <%= f.label :dedupe_key, "Identity key", class: "block text-sm font-medium text-gray-700 mb-1" %>
+      <%= f.text_field :dedupe_key, placeholder: "X-GitHub-Delivery",
+            class: "w-full rounded-md border border-gray-300 px-3 py-2 text-sm" %>
+      <p class="text-xs text-gray-500 mt-1">What makes two events the same: a header name, e.g. <code>X-GitHub-Delivery</code>, or a body path in dot syntax, e.g. <code>data.object.id</code>. Headers are checked first. Blank compares the SHA-256 of the raw body.</p>
+    </div>
+  </section>
+
   <%= f.submit submit_label, class: "rounded-md bg-blue-600 text-white px-3 py-1.5 text-sm hover:bg-blue-700" %>
 <% end %>

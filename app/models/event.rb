@@ -3,7 +3,7 @@ class Event < ApplicationRecord
   has_many :attempts, dependent: :destroy
 
   # Rolled-up delivery status filter values, in UI display order.
-  DELIVERY_STATUSES = %w[delivered failed partial pending undelivered].freeze
+  DELIVERY_STATUSES = %w[delivered failed partial pending undelivered duplicate].freeze
 
   # Attempt statuses that mean "still in flight" — no terminal outcome yet.
   # held means the connection is paused; no terminal outcome yet.
@@ -13,11 +13,15 @@ class Event < ApplicationRecord
   # exclusive; precedence: undelivered -> pending (any in-flight attempt) ->
   # delivered (all succeeded) -> failed (all failed/dead) -> partial (mixed).
   # `delivering` is treated as in-flight so a mid-delivery event never reads as
-  # failed. An unknown value returns all (caller already guards).
+  # failed. An unknown value returns all (caller already guards). `duplicate`
+  # selects deduplicated events; `undelivered` excludes them since a duplicate
+  # is intentionally undelivered, not stuck.
   scope :with_delivery_status, ->(status) {
     case status
     when "undelivered"
-      where.not(id: Attempt.select(:event_id))
+      where.not(id: Attempt.select(:event_id)).where(duplicate: false)
+    when "duplicate"
+      where(duplicate: true)
     when "pending"
       where(id: Attempt.where(status: IN_FLIGHT_STATUSES).select(:event_id))
     when "delivered"

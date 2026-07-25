@@ -27,20 +27,33 @@ class IngestController < ActionController::Base
       end
     end
 
+    headers = captured_headers
+    identity = source.dedupe_identity(headers: headers, body: body)
+    # A duplicate only matches non-duplicate originals: the window is anchored
+    # to the original, never extended by later copies. Concurrent copies can
+    # race past this check; acceptable at current scale.
+    duplicate = identity.present? &&
+                source.events.where(dedupe_key: identity, duplicate: false)
+                      .exists?(received_at: source.dedupe_window.seconds.ago..)
+
     event = source.events.create!(
       http_method: request.request_method,
       path: request.path,
       query_string: request.query_string.presence,
-      headers: captured_headers,
+      headers: headers,
       body: body.presence,
-      received_at: Time.current
+      received_at: Time.current,
+      dedupe_key: identity,
+      duplicate: duplicate
     )
 
-    # Paused connections still match: their DeliverEventJob converts the delivery into a held attempt instead of sending.
-    source.connections.where(status: %w[active paused]).find_each do |connection|
-      next unless connection.routes?(event)
+    unless duplicate
+      # Paused connections still match: their DeliverEventJob converts the delivery into a held attempt instead of sending.
+      source.connections.where(status: %w[active paused]).find_each do |connection|
+        next unless connection.routes?(event)
 
-      DeliverEventJob.perform_later(event.id, connection.id)
+        DeliverEventJob.perform_later(event.id, connection.id)
+      end
     end
 
     head :ok

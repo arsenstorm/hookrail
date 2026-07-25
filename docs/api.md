@@ -61,11 +61,19 @@ Writable params (all under `source`): `name` (required), plus the inbound-verifi
 Setting `verification_secret` enables verification; sending it blank disables it. Responses expose only the
 boolean `verification_enabled` — **the signing secret is never returned by any endpoint**.
 
+`dedupe` — a nullable object configuring per-source event deduplication (see the README). `window` is the
+deduplication window in seconds, 1–86400, and defaults to `60` when the object is present without it; the
+optional `key` string is the identity key, read as a header name first and a body dot path second, and
+omitting it compares the SHA-256 of the raw body. A repeat arriving inside the window is stored, flagged a
+duplicate, and never delivered. An out-of-range `window`, a non-string `key`, or any other key in the object
+is `422 validation_failed`. Send `{}` to clear it and switch deduplication off. Responses return `dedupe` as
+the stored object, or `null` when it is off.
+
 ```sh
 curl -X POST https://hookrail.dev/api/v1/sources \
   -H "Authorization: Bearer $HOOKRAIL_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"source":{"name":"GitHub","verification_secret":"s3cr3t","verification_header":"X-Hub-Signature-256","verification_signature_prefix":"sha256="}}'
+  -d '{"source":{"name":"GitHub","verification_secret":"s3cr3t","verification_header":"X-Hub-Signature-256","verification_signature_prefix":"sha256=","dedupe":{"window":300,"key":"X-GitHub-Delivery"}}}'
 ```
 
 ```json
@@ -76,7 +84,8 @@ curl -X POST https://hookrail.dev/api/v1/sources \
     "token": "hWkfYSAKs6u55jrYuYyeQ1Ek",
     "created_at": "2026-07-25T15:07:29.593Z",
     "updated_at": "2026-07-25T15:07:29.593Z",
-    "verification_enabled": true
+    "verification_enabled": true,
+    "dedupe": {"window": 300, "key": "X-GitHub-Delivery"}
   }
 }
 ```
@@ -239,15 +248,16 @@ Query params, all optional:
 | Param | Meaning |
 | --- | --- |
 | `source_id` | Only events on that source. |
-| `status` | Rolled-up delivery status: `delivered`, `failed`, `partial`, `pending`, `undelivered`. Anything else is ignored. |
+| `status` | Rolled-up delivery status: `delivered`, `failed`, `partial`, `pending`, `undelivered`, `duplicate`. Anything else is ignored. |
 | `q` | Case-insensitive substring match on the event body. |
 | `from` | Inclusive lower bound; parsed as a date and widened to start of day. |
 | `to` | Inclusive upper bound; widened to end of day. |
 | `cursor` | Opaque page token from a previous `next_cursor`. |
 
 Status buckets are mutually exclusive: `undelivered` has no attempts at all, `pending` has an attempt still in
-flight, `delivered` means every attempt succeeded, `failed` means none did, `partial` is a mix. Unparseable
-`from`/`to` values are dropped rather than erroring.
+flight, `delivered` means every attempt succeeded, `failed` means none did, `partial` is a mix. `duplicate`
+selects events deduplication flagged as repeats — they are deliberately never delivered, so `undelivered`
+excludes them. Unparseable `from`/`to` values are dropped rather than erroring.
 
 Pages hold 50 events. `next_cursor` is `null` on the last page; otherwise pass it back verbatim as `cursor`.
 Do not construct or parse cursors yourself.

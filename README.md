@@ -148,6 +148,32 @@ alerts, and consumes no retry attempts.
 The cap is shared by everything aimed at that destination — every connection wired to it, plus automatic
 retries, manual retries and replays.
 
+## Event deduplication
+
+Each source can drop repeat deliveries of the same event. Set a **dedupe window** on the source's form at
+*Sources → Edit* — 1 to 86400 seconds — and a second copy arriving inside that window is marked a duplicate.
+Leave the window blank and the source keeps every request. Saving an identity key without a window enables
+deduplication with a 60-second window.
+
+What counts as "the same event" is the **identity key**. The key names a header first — case-insensitively —
+and if the request carries no such header it is read as a body path in dot syntax, the same syntax routing
+rules use: `data.object.id`. With no key at all, identity is the SHA-256 of the raw body, so byte-identical
+bodies collide and nothing else does. If the key resolves to nothing — no such header, no such body path, or
+an empty value — the event is treated as unique and delivered.
+
+| Field | Meaning |
+| --- | --- |
+| Dedupe window (seconds) | 1–86400. Blank disables deduplication. Defaults to 60 if a key is set without one. |
+| Identity key | Header name, else body dot path. Blank compares the SHA-256 of the raw body. |
+
+Duplicates are stored and shown in the events list behind a *duplicate* badge — you can still inspect the
+headers and body — but they create **zero deliveries**: nothing is sent, nothing fails, no alerts fire. The
+window is anchored to the original, never extended by the copies, so the same identity arriving after it
+elapses is an ordinary new event.
+
+Deduplication never affects replay. A duplicate can be replayed, and an original can be replayed again, exactly
+like any other event.
+
 ## Payload transformations
 
 Each connection can carry a JavaScript `transform(request)` function that reshapes the request before it is

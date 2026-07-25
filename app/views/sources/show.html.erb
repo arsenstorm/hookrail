@@ -16,6 +16,15 @@
         Disabled
       <% end %>
     </dd>
+    <dt class="text-gray-500">Dedupe</dt>
+    <dd>
+      <% if @source.dedupe_enabled? %>
+        Enabled (<%= @source.dedupe_window %>s window,
+        <%= @source.dedupe_key.present? ? "key #{@source.dedupe_key}" : "body hash" %>)
+      <% else %>
+        Disabled
+      <% end %>
+    </dd>
     <dt class="text-gray-500">Quarantine</dt>
     <dd>
       <% count = @source.quarantined_webhooks.count %>

@@ -94,7 +94,13 @@
             </td>
             <td class="py-2"><%= event.http_method %></td>
             <td class="py-2"><%= event.source.name %></td>
-            <td class="py-2"><%= delivery_summary(event) %></td>
+            <td class="py-2">
+              <% if event.duplicate? %>
+                <span class="rounded-full bg-gray-100 text-gray-600 px-2 py-0.5 text-xs">duplicate</span>
+              <% else %>
+                <%= delivery_summary(event) %>
+              <% end %>
+            </td>
           </tr>
         <% end %>
       </tbody>

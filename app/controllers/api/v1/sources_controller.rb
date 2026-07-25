@@ -36,13 +36,15 @@ module Api
         params.require(:source).permit(:name, :verification_secret, :verification_header,
           :verification_algorithm, :verification_encoding, :verification_header_format,
           :verification_signature_prefix, :verification_signature_key, :verification_timestamp_key,
-          :verification_timestamp_header, :verification_payload_template, :verification_tolerance_seconds)
+          :verification_timestamp_header, :verification_payload_template, :verification_tolerance_seconds,
+          dedupe: {})
       end
 
       # The verification config holds the signing secret — never serialize it.
       def source_json(source)
         source.as_json(only: %i[id name token created_at updated_at])
-              .merge("verification_enabled" => source.verification_enabled?)
+              .merge("verification_enabled" => source.verification_enabled?,
+                     "dedupe" => source.dedupe.presence)
       end
     end
   end
