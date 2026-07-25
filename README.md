@@ -56,3 +56,10 @@ Signature in key=value pairs (Stripe-style):
 | Algorithm / Encoding | `sha256` / `hex` |
 | Payload template | `{timestamp}.{body}` |
 | Tolerance | `300` |
+
+## REST API
+
+A JSON API under `/api/v1` covers sources, destinations, connections, events, delivery attempts, and retries.
+Requests authenticate with an org-scoped bearer key: `Authorization: Bearer <key>`. Create and revoke keys in
+the UI at `/api_keys` — the raw key is shown once and only its digest is stored.
+Endpoint reference: [docs/api.md](docs/api.md).

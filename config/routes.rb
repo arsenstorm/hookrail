@@ -33,6 +33,20 @@ Rails.application.routes.draw do
     member { patch :toggle }
   end
 
+  # Org-scoped API keys managed in the UI; the JSON API below authenticates with them.
+  resources :api_keys, only: %i[index create destroy]
+
+  namespace :api do
+    namespace :v1 do
+      resources :sources, :destinations, :connections, only: %i[index show create update destroy]
+      resources :events, only: %i[index show] do
+        resources :attempts, only: :index
+        resources :retries, only: :create
+        collection { post :bulk_retry, to: "bulk_retries#create" }
+      end
+    end
+  end
+
   # Authenticated landing page
   root "dashboard#show"
 end

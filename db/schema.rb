@@ -10,9 +10,21 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_25_142901) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_25_150133) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
+
+  create_table "api_keys", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "name", null: false
+    t.bigint "organization_id", null: false
+    t.string "prefix", null: false
+    t.datetime "revoked_at"
+    t.string "token_digest", null: false
+    t.datetime "updated_at", null: false
+    t.index ["organization_id"], name: "index_api_keys_on_organization_id"
+    t.index ["token_digest"], name: "index_api_keys_on_token_digest", unique: true
+  end
 
   create_table "attempts", force: :cascade do |t|
     t.integer "attempt_number", null: false
@@ -268,6 +280,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_25_142901) do
     t.index ["github_uid"], name: "index_users_on_github_uid", unique: true
   end
 
+  add_foreign_key "api_keys", "organizations"
   add_foreign_key "attempts", "connections"
   add_foreign_key "attempts", "events"
   add_foreign_key "connections", "destinations"

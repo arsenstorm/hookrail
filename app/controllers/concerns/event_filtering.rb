@@ -40,4 +40,21 @@ module EventFiltering
   rescue ArgumentError
     nil
   end
+
+  # Opaque cursor: urlsafe Base64 of "received_at_iso8601(6)|id".
+  def encode_cursor(event)
+    Base64.urlsafe_encode64("#{event.received_at.iso8601(6)}|#{event.id}")
+  end
+
+  # Decode cursor; blank/garbage -> nil (treated as no cursor, page 1).
+  def decode_cursor(token)
+    return nil if token.blank?
+    raw = Base64.urlsafe_decode64(token)
+    ts, id = raw.split("|", 2)
+    time = Time.zone.parse(ts)
+    return nil unless time && id.present?
+    { received_at: time, id: id.to_i }
+  rescue ArgumentError
+    nil
+  end
 end

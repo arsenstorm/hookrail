@@ -1,0 +1,58 @@
+<% content_for :title, "API keys" %>
+<div class="w-full max-w-4xl mx-auto py-16">
+  <div class="flex items-center justify-between mb-6">
+    <h1 class="text-2xl font-semibold">API keys</h1>
+    <%= link_to "Dashboard", root_path, class: "text-sm text-gray-500 hover:text-gray-700" %>
+  </div>
+
+  <% if flash[:new_api_key] %>
+    <div class="mb-6 rounded-md border border-amber-300 bg-amber-50 p-4">
+      <h2 class="text-sm font-semibold text-amber-900">Copy this key now — it will not be shown again</h2>
+      <div class="mt-2 select-all break-all rounded-md border border-amber-200 bg-white px-3 py-2 font-mono text-sm">
+        <%= flash[:new_api_key] %>
+      </div>
+      <p class="mt-2 text-xs text-amber-800">
+        Only a digest is stored, so we can't show it to you again. Send it as
+        <code>Authorization: Bearer &lt;key&gt;</code>.
+      </p>
+    </div>
+  <% end %>
+
+  <%= form_with url: api_keys_path, scope: :api_key, class: "mb-8 flex items-center gap-2" do |f| %>
+    <%= f.text_field :name, placeholder: "Key name", class: "w-64 rounded-md border border-gray-300 px-3 py-2 text-sm" %>
+    <%= f.submit "Create key", class: "rounded-md bg-blue-600 text-white px-3 py-2 text-sm hover:bg-blue-700 cursor-pointer" %>
+  <% end %>
+
+  <% if @api_keys.empty? %>
+    <p class="text-gray-500">No API keys yet. Create one to authenticate against the REST API at <code>/api/v1</code>.</p>
+  <% else %>
+    <table class="w-full text-sm">
+      <thead class="text-left text-gray-500 border-b">
+        <tr>
+          <th class="py-2 font-medium">Name</th>
+          <th class="py-2 font-medium">Key</th>
+          <th class="py-2 font-medium">Created</th>
+          <th class="py-2 font-medium"></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @api_keys.each do |api_key| %>
+          <tr class="border-b hover:bg-gray-50 <%= "text-gray-400" unless api_key.active? %>">
+            <td class="py-2"><%= api_key.name %></td>
+            <td class="py-2 font-mono text-xs"><%= api_key.prefix %>…</td>
+            <td class="py-2"><%= api_key.created_at.strftime("%Y-%m-%d %H:%M") %></td>
+            <td class="py-2 text-right">
+              <% if api_key.active? %>
+                <%= button_to "Revoke", api_key_path(api_key), method: :delete,
+                      class: "text-red-600 hover:underline text-sm cursor-pointer", form: { class: "inline" },
+                      data: { turbo_confirm: "Revoke this key? Anything using it stops working immediately." } %>
+              <% else %>
+                <span class="text-xs">revoked <%= api_key.revoked_at.strftime("%Y-%m-%d") %></span>
+              <% end %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  <% end %>
+</div>
