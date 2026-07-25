@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_25_150133) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_25_161838) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -49,6 +49,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_25_150133) do
     t.datetime "created_at", null: false
     t.bigint "destination_id", null: false
     t.bigint "project_id", null: false
+    t.jsonb "routing_rule", default: {}, null: false
     t.bigint "source_id", null: false
     t.datetime "unhealthy_since"
     t.datetime "updated_at", null: false

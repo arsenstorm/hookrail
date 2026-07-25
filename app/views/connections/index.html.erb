@@ -24,7 +24,12 @@
       <tbody>
         <% @connections.each do |connection| %>
           <tr class="border-b hover:bg-gray-50">
-            <td class="py-2"><%= connection.source.name %> <span class="text-gray-400">→</span> <%= connection.destination.name %></td>
+            <td class="py-2">
+              <%= connection.source.name %> <span class="text-gray-400">→</span> <%= connection.destination.name %>
+              <% if connection.routing_rule.present? %>
+                <span class="ml-1 rounded-full bg-gray-100 text-gray-600 px-2 py-0.5 text-xs">filtered</span>
+              <% end %>
+            </td>
             <td class="py-2">
               <% if connection.active? %>
                 <span class="text-green-700">active</span>
@@ -39,6 +44,7 @@
               <% end %>
             </td>
             <td class="py-2">
+              <%= link_to "Edit rule", edit_connection_path(connection), class: "text-blue-600 hover:underline text-sm" %>
               <%= button_to (connection.active? ? "Deactivate" : "Activate"), toggle_connection_path(connection), method: :patch,
                     class: "text-blue-600 hover:underline text-sm", form: { class: "inline" } %>
               <%= button_to "Delete", connection_path(connection), method: :delete,

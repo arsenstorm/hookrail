@@ -35,7 +35,7 @@ module Api
       # Re-resolve foreign ids through the caller's project so another org's
       # source/destination id fails identically to a nonexistent one.
       def connection_params
-        raw = params.require(:connection).permit(:source_id, :destination_id, :active)
+        raw = params.require(:connection).permit(:source_id, :destination_id, :active, routing_rule: {})
         raw[:source_id] = Current.project.sources.where(id: raw[:source_id]).pick(:id) if raw.key?(:source_id)
         raw[:destination_id] = Current.project.destinations.where(id: raw[:destination_id]).pick(:id) if raw.key?(:destination_id)
         raw
@@ -43,7 +43,7 @@ module Api
 
       def connection_json(connection)
         connection.as_json(only: %i[id source_id destination_id active consecutive_failures
-                                     unhealthy_since created_at updated_at])
+                                     unhealthy_since routing_rule created_at updated_at])
       end
     end
   end

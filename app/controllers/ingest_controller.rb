@@ -37,6 +37,8 @@ class IngestController < ActionController::Base
     )
 
     source.connections.where(active: true).find_each do |connection|
+      next unless connection.routes?(event)
+
       DeliverEventJob.perform_later(event.id, connection.id)
     end
 

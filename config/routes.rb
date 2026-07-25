@@ -29,7 +29,7 @@ Rails.application.routes.draw do
   resources :destinations do
     member { patch :rotate_secret }
   end
-  resources :connections, only: %i[index new create destroy] do
+  resources :connections, only: %i[index new create edit update destroy] do
     member { patch :toggle }
   end
 

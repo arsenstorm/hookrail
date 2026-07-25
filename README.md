@@ -63,3 +63,19 @@ A JSON API under `/api/v1` covers sources, destinations, connections, events, de
 Requests authenticate with an org-scoped bearer key: `Authorization: Bearer <key>`. Create and revoke keys in
 the UI at `/api_keys` — the raw key is shown once and only its digest is stored.
 Endpoint reference: [docs/api.md](docs/api.md).
+
+## Routing rules
+
+Each connection can filter which of its source's events it forwards. Edit the rule at *Connections → Edit rule*.
+A connection with no rule receives everything; otherwise **all** criteria below must match (AND), and values are
+compared as strings.
+
+| Criterion | Meaning |
+| --- | --- |
+| Path | Request path the webhook arrived on. `*` is a glob wildcard, not regex: `/hooks/*` matches `/hooks/gh`. |
+| Method | HTTP method, case-insensitive. Blank matches any method. |
+| Headers | One `Name: value` per line. Names are case-insensitive, values must match exactly. |
+| Body fields | One `dot.path=value` per line, addressing nested JSON: `data.object.status=succeeded`, `type=invoice.paid`. |
+
+A body that is not a JSON object fails every body criterion — it never errors, it just doesn't match. Blank
+criteria are dropped, so clearing all four restores "receives everything".

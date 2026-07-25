@@ -1,0 +1,61 @@
+<% content_for :title, "Edit routing rule" %>
+<% rule = @connection.routing_rule.to_h %>
+<div class="w-full max-w-4xl mx-auto py-16">
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <h1 class="text-2xl font-semibold">Edit routing rule</h1>
+      <p class="text-sm text-gray-500 mt-1"><%= @connection.source.name %> <span class="text-gray-400">→</span> <%= @connection.destination.name %></p>
+    </div>
+    <%= link_to "Connections", connections_path, class: "text-sm text-gray-500 hover:text-gray-700" %>
+  </div>
+
+  <%= form_with model: @connection, method: :patch, class: "space-y-4 max-w-lg" do |f| %>
+    <% if @connection.errors.any? %>
+      <div class="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-800">
+        <ul class="list-disc list-inside">
+          <% @connection.errors.full_messages.each do |m| %><li><%= m %></li><% end %>
+        </ul>
+      </div>
+    <% end %>
+
+    <p class="rounded-md bg-gray-50 p-3 text-sm text-gray-600">
+      An event is forwarded only when <strong>every</strong> criterion below matches.
+      Leave them all blank and this connection receives every event from the source.
+    </p>
+
+    <div>
+      <%= f.label :rule_path, "Path", class: "block text-sm font-medium text-gray-700 mb-1" %>
+      <p class="text-xs text-gray-500 mb-1">Request path the webhook arrived on. <code>*</code> is a wildcard (glob, not regex), e.g. <code>/hooks/*</code>.</p>
+      <%= f.text_field :rule_path, value: rule["path"], placeholder: "/hooks/*",
+            class: "w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-mono" %>
+    </div>
+
+    <div>
+      <%= f.label :rule_http_method, "Method", class: "block text-sm font-medium text-gray-700 mb-1" %>
+      <%= f.select :rule_http_method, %w[GET POST PUT PATCH DELETE],
+            { include_blank: "Any method", selected: rule["http_method"] },
+            class: "w-full rounded-md border border-gray-300 px-3 py-2 text-sm" %>
+    </div>
+
+    <div>
+      <%= f.label :rule_headers_text, "Headers", class: "block text-sm font-medium text-gray-700 mb-1" %>
+      <p class="text-xs text-gray-500 mb-1">One per line, as <code>Name: value</code>. Names are case-insensitive, values must match exactly.</p>
+      <%= f.text_area :rule_headers_text, rows: 3, placeholder: "X-Github-Event: push",
+            value: rule["headers"].to_h.map { |k, v| "#{k}: #{v}" }.join("\n"),
+            class: "w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-mono" %>
+    </div>
+
+    <div>
+      <%= f.label :rule_body_text, "Body fields", class: "block text-sm font-medium text-gray-700 mb-1" %>
+      <p class="text-xs text-gray-500 mb-1">One per line, as <code>dot.path=value</code>, e.g. <code>data.object.status=succeeded</code>. A body that is not a JSON object matches nothing.</p>
+      <%= f.text_area :rule_body_text, rows: 3, placeholder: "type=invoice.paid",
+            value: rule["body"].to_h.map { |k, v| "#{k}=#{v}" }.join("\n"),
+            class: "w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-mono" %>
+    </div>
+
+    <div class="flex items-center gap-4">
+      <%= f.submit "Save rule", class: "rounded-md bg-blue-600 text-white px-3 py-1.5 text-sm hover:bg-blue-700" %>
+      <%= link_to "Cancel", connections_path, class: "text-sm text-gray-500 hover:text-gray-700" %>
+    </div>
+  <% end %>
+</div>
