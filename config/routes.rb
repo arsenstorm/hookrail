@@ -45,6 +45,14 @@ Rails.application.routes.draw do
   # Org-level data retention window, mirrored by the JSON API.
   resource :retention, only: %i[show update]
 
+  # Team management: the members page, invite links, and the org switcher.
+  resources :members, only: %i[index update destroy] do
+    member { post :transfer_ownership }
+  end
+  resources :invitations, only: %i[create destroy]
+  get "invites/:token", to: "invites#show", as: :invite
+  post "switch_org/:id", to: "org_switches#create", as: :switch_org
+
   # Aggregate delivery health over a selectable window.
   get "metrics", to: "metrics#show", as: :metrics
 

@@ -1,4 +1,6 @@
 class ApiKeysController < ApplicationController
+  before_action :require_org_admin
+
   def index
     @api_keys = Current.organization.api_keys.order(created_at: :desc)
   end

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_25_230000) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_26_000003) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -100,6 +100,30 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_25_230000) do
     t.index ["source_id"], name: "index_events_on_source_id"
   end
 
+  create_table "invitations", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "email", null: false
+    t.jsonb "grants", default: [], null: false
+    t.bigint "organization_id", null: false
+    t.string "role", default: "member", null: false
+    t.string "token", null: false
+    t.datetime "updated_at", null: false
+    t.index ["organization_id"], name: "index_invitations_on_organization_id"
+    t.index ["token"], name: "index_invitations_on_token", unique: true
+  end
+
+  create_table "memberships", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "organization_id", null: false
+    t.string "role", default: "member", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["organization_id", "user_id"], name: "index_memberships_on_organization_id_and_user_id", unique: true
+    t.index ["organization_id"], name: "idx_memberships_one_owner_per_org", unique: true, where: "((role)::text = 'owner'::text)"
+    t.index ["organization_id"], name: "index_memberships_on_organization_id"
+    t.index ["user_id"], name: "index_memberships_on_user_id"
+  end
+
   create_table "metric_rollups", force: :cascade do |t|
     t.bigint "connection_id"
     t.datetime "created_at", null: false
@@ -122,7 +146,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_25_230000) do
     t.bigint "owner_id", null: false
     t.integer "retention_days", default: 30, null: false
     t.datetime "updated_at", null: false
-    t.index ["owner_id"], name: "index_organizations_on_owner_id", unique: true
+    t.index ["owner_id"], name: "index_organizations_on_owner_id"
+  end
+
+  create_table "project_grants", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "level", null: false
+    t.bigint "membership_id", null: false
+    t.bigint "project_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["membership_id", "project_id"], name: "index_project_grants_on_membership_id_and_project_id", unique: true
+    t.index ["membership_id"], name: "index_project_grants_on_membership_id"
+    t.index ["project_id"], name: "index_project_grants_on_project_id"
   end
 
   create_table "projects", force: :cascade do |t|
@@ -321,7 +356,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_25_230000) do
   add_foreign_key "connections", "sources"
   add_foreign_key "destinations", "projects"
   add_foreign_key "events", "sources"
+  add_foreign_key "invitations", "organizations"
+  add_foreign_key "memberships", "organizations"
+  add_foreign_key "memberships", "users"
   add_foreign_key "organizations", "users", column: "owner_id"
+  add_foreign_key "project_grants", "memberships"
+  add_foreign_key "project_grants", "projects"
   add_foreign_key "projects", "organizations"
   add_foreign_key "quarantined_webhooks", "sources"
   add_foreign_key "solid_queue_blocked_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade

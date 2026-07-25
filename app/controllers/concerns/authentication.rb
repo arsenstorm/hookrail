@@ -26,8 +26,14 @@ module Authentication
     return unless user
 
     Current.user = user
-    Current.organization = user.organization
-    Current.project = user.organization&.projects&.first
+    # The session may name an org; it counts only if a membership backs it.
+    # Fallback: oldest membership, which is the personal org for most users.
+    membership = user.memberships.includes(:organization)
+                     .find_by(organization_id: session[:organization_id]) ||
+                 user.memberships.includes(:organization).order(:created_at).first
+    Current.membership = membership
+    Current.organization = membership&.organization
+    Current.project = membership&.accessible_projects&.first
     user
   end
 

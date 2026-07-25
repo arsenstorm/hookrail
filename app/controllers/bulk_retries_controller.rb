@@ -1,6 +1,8 @@
 class BulkRetriesController < ApplicationController
   include EventFiltering
 
+  before_action :require_project_editor
+
   # ponytail: claims run in-request, two queries per pair; move to a background
   # job if filtered sets grow past a few thousand deliveries.
   def create

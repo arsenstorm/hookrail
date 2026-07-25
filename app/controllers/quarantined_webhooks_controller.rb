@@ -1,4 +1,6 @@
 class QuarantinedWebhooksController < ApplicationController
+  before_action :require_project_access
+
   def index
     @quarantined_webhooks = scope.includes(:source).order(received_at: :desc, id: :desc).limit(100)
   end

@@ -1,6 +1,8 @@
 class BulkReplaysController < ApplicationController
   include EventFiltering
 
+  before_action :require_project_editor
+
   # ponytail: enqueues in-request like bulk retry; move to a background job
   # if filtered sets grow past a few thousand events.
   def create

@@ -1,4 +1,6 @@
 class RetriesController < ApplicationController
+  before_action :require_project_editor
+
   def create
     event = scoped_events.find(params[:event_id])
     connection = event.source.connections.find(params[:connection_id])

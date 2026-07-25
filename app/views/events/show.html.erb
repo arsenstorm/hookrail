@@ -46,7 +46,7 @@
                   <span class="rounded-full bg-amber-100 text-amber-800 px-2 py-0.5 text-xs">transform error</span>
                 <% end %>
                 <span class="text-gray-500"><%= attempt.status %></span>
-                <% if @retryable_attempt_ids.include?(attempt.id) %>
+                <% if can_edit? && @retryable_attempt_ids.include?(attempt.id) %>
                   <%= button_to "Retry", event_retries_path(@event), params: { connection_id: attempt.connection_id },
                         class: "rounded-md border border-gray-300 px-2 py-1 text-xs font-medium hover:bg-gray-50" %>
                 <% end %>

@@ -17,11 +17,11 @@ class AlertMailer < ApplicationMailer
 
   private
 
-  # Personal orgs have one user, the owner. GitHub OAuth may withhold the
-  # email address, in which case there is no one to mail.
+  # Alerts go to every owner and admin with an email — incident response is a
+  # team activity. GitHub OAuth may withhold addresses; skip when nobody has one.
   def alert_mail(project, subject)
-    to = project.organization.owner.email
-    return if to.blank?
+    to = project.organization.alert_recipients
+    return if to.empty?
 
     mail(to: to, subject: subject)
   end

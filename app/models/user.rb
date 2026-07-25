@@ -1,5 +1,6 @@
 class User < ApplicationRecord
   has_one :organization, foreign_key: :owner_id, inverse_of: :owner, dependent: :destroy
+  has_many :memberships, dependent: :destroy
 
   validates :github_uid, presence: true, uniqueness: true
 
@@ -16,9 +17,13 @@ class User < ApplicationRecord
     user
   end
 
-  # ponytail: single-user personal org; DB unique index on owner_id guards dup orgs.
+  # ponytail: personal org bootstrap on sign-in; memberships are the access truth.
   def ensure_org_and_project!
-    org = organization || create_organization!(name: github_login.presence || "personal")
+    org = organization || memberships.order(:created_at).first&.organization ||
+          create_organization!(name: github_login.presence || "personal")
+    Membership.find_or_create_by!(organization: org, user: self) do |m|
+      m.role = org.memberships.exists?(role: "owner") ? "member" : "owner"
+    end
     org.projects.first || org.projects.create!(name: "Default")
     org
   end

@@ -290,3 +290,19 @@ An event with a delivery still in flight is left alone until that delivery reach
 retry in progress is never pruned out from under itself. Metrics daily rollups survive pruning, which is why
 `/metrics` totals stay correct once the raw events behind them are gone, and configuration — sources,
 destinations, connections, API keys, and settings — is never touched.
+
+## Team members
+
+Every org has exactly one **owner**, and ownership moves only by an explicit transfer on the *Members* page —
+the outgoing owner drops to admin in the same step. **Admins** run everything else: settings, API keys,
+invitations, and every project in the org. **Members** see only the projects granted to them, each as a
+**viewer** (read-only) or an **editor** (create, edit, delete, retry, replay). A member with no grant sees no
+projects at all.
+
+Invites are links, not emails. An admin creates one on the *Members* page, copies the URL, and sends it
+however they like. The invitee opens it, signs in with GitHub, and joins the org — their GitHub account email
+must match the address on the invitation, so a forwarded link is useless to anyone else. Links expire after
+**7 days** and can be revoked at any time before they are used.
+
+Incident alert emails — unhealthy connection, recovered connection, quarantined webhook — go to every owner
+and admin in the org with a known email address.

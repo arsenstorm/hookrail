@@ -1,4 +1,7 @@
 class DestinationsController < ApplicationController
+  before_action :require_project_access
+  before_action :require_project_editor, except: %i[index show]
+
   def index
     @destinations = Current.project.destinations.order(created_at: :desc)
   end

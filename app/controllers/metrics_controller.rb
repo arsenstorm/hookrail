@@ -1,4 +1,6 @@
 class MetricsController < ApplicationController
+  before_action :require_project_access
+
   # Each sort key orders worst-offender-first for its column.
   SORTS = {
     "failed" => ->(row) { [ -row[:failed], -row[:events] ] },

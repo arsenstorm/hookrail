@@ -1,4 +1,7 @@
 class ConnectionsController < ApplicationController
+  before_action :require_project_access
+  before_action :require_project_editor, except: :index
+
   STATUS_NOTICES = {
     "active" => "Connection resumed.",
     "paused" => "Connection paused.",

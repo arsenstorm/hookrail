@@ -1,6 +1,8 @@
 class EventsController < ApplicationController
   include EventFiltering
 
+  before_action :require_project_access
+
   PAGE_SIZE = 50
 
   def index

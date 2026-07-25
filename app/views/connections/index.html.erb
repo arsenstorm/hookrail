@@ -3,7 +3,9 @@
   <div class="flex items-center justify-between mb-6">
     <h1 class="text-2xl font-semibold">Connections</h1>
     <div class="flex items-center gap-4">
-      <%= link_to "New connection", new_connection_path, class: "text-blue-600 hover:underline" %>
+      <% if can_edit? %>
+        <%= link_to "New connection", new_connection_path, class: "text-blue-600 hover:underline" %>
+      <% end %>
       <%= link_to "Dashboard", root_path, class: "text-sm text-gray-500 hover:text-gray-700" %>
     </div>
   </div>
@@ -46,25 +48,27 @@
               <% end %>
             </td>
             <td class="py-2">
-              <%= link_to "Edit", edit_connection_path(connection), class: "text-blue-600 hover:underline text-sm" %>
-              <% if connection.status_active? %>
-                <%= button_to "Pause", status_connection_path(connection), method: :patch, params: { status: "paused" },
-                      class: "text-blue-600 hover:underline text-sm", form: { class: "inline" } %>
-              <% elsif connection.status_paused? %>
-                <%= button_to "Resume", status_connection_path(connection), method: :patch, params: { status: "active" },
-                      class: "text-blue-600 hover:underline text-sm", form: { class: "inline" } %>
+              <% if can_edit? %>
+                <%= link_to "Edit", edit_connection_path(connection), class: "text-blue-600 hover:underline text-sm" %>
+                <% if connection.status_active? %>
+                  <%= button_to "Pause", status_connection_path(connection), method: :patch, params: { status: "paused" },
+                        class: "text-blue-600 hover:underline text-sm", form: { class: "inline" } %>
+                <% elsif connection.status_paused? %>
+                  <%= button_to "Resume", status_connection_path(connection), method: :patch, params: { status: "active" },
+                        class: "text-blue-600 hover:underline text-sm", form: { class: "inline" } %>
+                <% end %>
+                <% if connection.status_disabled? %>
+                  <%= button_to "Enable", status_connection_path(connection), method: :patch, params: { status: "active" },
+                        class: "text-blue-600 hover:underline text-sm", form: { class: "inline" } %>
+                <% else %>
+                  <%= button_to "Disable", status_connection_path(connection), method: :patch, params: { status: "disabled" },
+                        class: "text-blue-600 hover:underline text-sm", form: { class: "inline" },
+                        data: { turbo_confirm: "Disable this connection? Held and pending deliveries are cancelled." } %>
+                <% end %>
+                <%= button_to "Delete", connection_path(connection), method: :delete,
+                      class: "text-red-600 hover:underline text-sm", form: { class: "inline" },
+                      data: { turbo_confirm: "Delete this connection? This also deletes its delivery attempts." } %>
               <% end %>
-              <% if connection.status_disabled? %>
-                <%= button_to "Enable", status_connection_path(connection), method: :patch, params: { status: "active" },
-                      class: "text-blue-600 hover:underline text-sm", form: { class: "inline" } %>
-              <% else %>
-                <%= button_to "Disable", status_connection_path(connection), method: :patch, params: { status: "disabled" },
-                      class: "text-blue-600 hover:underline text-sm", form: { class: "inline" },
-                      data: { turbo_confirm: "Disable this connection? Held and pending deliveries are cancelled." } %>
-              <% end %>
-              <%= button_to "Delete", connection_path(connection), method: :delete,
-                    class: "text-red-600 hover:underline text-sm", form: { class: "inline" },
-                    data: { turbo_confirm: "Delete this connection? This also deletes its delivery attempts." } %>
             </td>
           </tr>
         <% end %>

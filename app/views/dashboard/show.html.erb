@@ -1,22 +1,48 @@
+<% memberships = Current.user.memberships.includes(:organization) %>
 <div class="mx-auto max-w-2xl py-16">
   <h1 class="text-2xl font-semibold mb-2">Hookrail</h1>
-  <p class="text-gray-600 mb-4">
-    Signed in as <%= current_user.github_login %>
-    &middot; org <%= Current.organization&.name %>
-    &middot; project <%= Current.project&.name %>
-  </p>
+  <div class="mb-4">
+    <p class="text-gray-600">
+      Signed in as <%= current_user.github_login %>
+      &middot; org <%= Current.organization&.name %>
+      <% if Current.project %>&middot; project <%= Current.project.name %><% end %>
+    </p>
+
+    <% if memberships.size > 1 %>
+      <div class="mt-1 flex flex-wrap items-center gap-2 text-sm text-gray-500">
+        Switch to
+        <% memberships.reject { |m| m.organization_id == Current.organization&.id }.each do |m| %>
+          <%= button_to m.organization.name, switch_org_path(m.organization_id),
+                class: "rounded-md border border-gray-300 px-2 py-0.5 text-xs hover:bg-gray-50 cursor-pointer",
+                form: { class: "inline" } %>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+
   <%= render "shared/unhealthy_banner" %>
 
-  <nav class="mb-8 flex flex-col gap-1">
-    <%= link_to "Metrics →", metrics_path, class: "text-blue-600 hover:underline" %>
-    <%= link_to "View events →", events_path, class: "text-blue-600 hover:underline" %>
-    <%= link_to "Sources →", sources_path, class: "text-blue-600 hover:underline" %>
-    <%= link_to "Destinations →", destinations_path, class: "text-blue-600 hover:underline" %>
-    <%= link_to "Connections →", connections_path, class: "text-blue-600 hover:underline" %>
-    <%= link_to "API keys →", api_keys_path, class: "text-blue-600 hover:underline" %>
-    <%= link_to "Alert webhook →", alert_webhook_path, class: "text-blue-600 hover:underline" %>
-    <%= link_to "Data retention →", retention_path, class: "text-blue-600 hover:underline" %>
-  </nav>
+  <% if Current.project.nil? %>
+    <p class="mb-8 max-w-lg text-sm text-gray-500">
+      No project access in this org yet — an admin has to grant you one before events, sources,
+      and destinations show up here.
+    </p>
+  <% else %>
+    <nav class="mb-8 flex flex-col gap-1">
+      <%= link_to "Metrics →", metrics_path, class: "text-blue-600 hover:underline" %>
+      <%= link_to "View events →", events_path, class: "text-blue-600 hover:underline" %>
+      <%= link_to "Sources →", sources_path, class: "text-blue-600 hover:underline" %>
+      <%= link_to "Destinations →", destinations_path, class: "text-blue-600 hover:underline" %>
+      <%= link_to "Connections →", connections_path, class: "text-blue-600 hover:underline" %>
+      <% if Current.membership&.admin_or_owner? %>
+        <%= link_to "Members →", members_path, class: "text-blue-600 hover:underline" %>
+        <%= link_to "API keys →", api_keys_path, class: "text-blue-600 hover:underline" %>
+        <%= link_to "Alert webhook →", alert_webhook_path, class: "text-blue-600 hover:underline" %>
+        <%= link_to "Data retention →", retention_path, class: "text-blue-600 hover:underline" %>
+      <% end %>
+    </nav>
+  <% end %>
+
   <%= button_to "Sign out", logout_path, method: :delete,
         class: "rounded-md border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50" %>
 </div>

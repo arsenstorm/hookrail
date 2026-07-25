@@ -1,4 +1,7 @@
 class SourcesController < ApplicationController
+  before_action :require_project_access
+  before_action :require_project_editor, except: %i[index show]
+
   def index
     @sources = Current.project.sources.order(created_at: :desc)
   end

@@ -2,6 +2,9 @@ class Organization < ApplicationRecord
   belongs_to :owner, class_name: "User"
   has_many :projects, dependent: :destroy
   has_many :api_keys, dependent: :destroy
+  has_many :memberships, dependent: :destroy
+  has_many :users, through: :memberships
+  has_many :invitations, dependent: :destroy
 
   validates :name, presence: true
 
@@ -22,4 +25,10 @@ class Organization < ApplicationRecord
   end
 
   def alert_webhook_configured? = alert_webhook_url.present?
+
+  # Owners and admins with a known address — GitHub OAuth may withhold emails.
+  def alert_recipients
+    memberships.where(role: %w[owner admin]).joins(:user)
+               .where.not(users: { email: [ nil, "" ] }).pluck("users.email")
+  end
 end

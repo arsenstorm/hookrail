@@ -1,4 +1,6 @@
 class AlertWebhooksController < ApplicationController
+  before_action :require_org_admin
+
   def show
   end
 

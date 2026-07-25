@@ -1,0 +1,139 @@
+<% content_for :title, "Members" %>
+<div class="w-full max-w-4xl mx-auto py-16">
+  <div class="flex items-center justify-between mb-6">
+    <h1 class="text-2xl font-semibold">Members</h1>
+    <%= link_to "Dashboard", root_path, class: "text-sm text-gray-500 hover:text-gray-700" %>
+  </div>
+
+  <p class="text-sm text-gray-600 mb-6 max-w-lg">
+    One owner runs the org. Admins do everything but hand over ownership, and both see every project.
+    Members see only the projects granted to them below — as a viewer (read-only) or an editor.
+  </p>
+
+  <table class="w-full text-sm">
+    <thead class="text-left text-gray-500 border-b">
+      <tr>
+        <th class="py-2 font-medium">Member</th>
+        <th class="py-2 font-medium">Role and project access</th>
+        <th class="py-2 font-medium"></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @memberships.each do |m| %>
+        <tr class="border-b align-top">
+          <td class="py-3 pr-4">
+            <div class="font-medium"><%= m.user.github_login %></div>
+            <div class="text-xs text-gray-500"><%= m.user.name.presence || m.user.email %></div>
+          </td>
+          <td class="py-3 pr-4">
+            <% if m.owner? %>
+              <span class="rounded-full bg-gray-100 text-gray-700 px-2 py-0.5 text-xs">owner</span>
+            <% else %>
+              <%= form_with url: member_path(m), method: :patch, class: "flex flex-wrap items-end gap-3" do %>
+                <div class="flex flex-col">
+                  <label class="text-xs text-gray-500 mb-1">Role</label>
+                  <%= select_tag "membership[role]",
+                        options_for_select([ %w[Admin admin], %w[Member member] ], m.role),
+                        class: "rounded-md border border-gray-300 px-2 py-1.5 text-sm" %>
+                </div>
+                <% @projects.each do |project| %>
+                  <div class="flex flex-col">
+                    <label class="text-xs text-gray-500 mb-1"><%= project.name %></label>
+                    <%= select_tag "membership[grants][#{project.id}]",
+                          options_for_select([ [ "No access", "" ], %w[Viewer viewer], %w[Editor editor] ],
+                                             m.project_grants.find { |g| g.project_id == project.id }&.level),
+                          class: "rounded-md border border-gray-300 px-2 py-1.5 text-sm" %>
+                  </div>
+                <% end %>
+                <%= submit_tag "Save", name: nil,
+                      class: "rounded-md bg-blue-600 text-white px-3 py-1.5 text-sm hover:bg-blue-700 cursor-pointer" %>
+              <% end %>
+              <p class="mt-1 text-xs text-gray-500">Project access applies to members only — admins see every project.</p>
+            <% end %>
+          </td>
+          <td class="py-3">
+            <% unless m.owner? %>
+              <div class="flex items-center gap-3">
+                <% if Current.membership.owner? && m.id != Current.membership.id %>
+                  <%= button_to "Make owner", transfer_ownership_member_path(m),
+                        class: "text-gray-600 hover:underline text-sm cursor-pointer", form: { class: "inline" },
+                        data: { turbo_confirm: "Hand the org over to #{m.user.github_login}? " \
+                                               "You drop to admin and can't take ownership back yourself." } %>
+                <% end %>
+                <%= button_to "Remove", member_path(m), method: :delete,
+                      class: "text-red-600 hover:underline text-sm cursor-pointer", form: { class: "inline" },
+                      data: { turbo_confirm: "Remove #{m.user.github_login} from this org?" } %>
+              </div>
+            <% end %>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+
+  <section class="mt-10">
+    <h2 class="text-sm font-semibold text-gray-500 uppercase mb-2">Pending invitations</h2>
+    <% if @invitations.empty? %>
+      <p class="text-gray-500 text-sm">None.</p>
+    <% else %>
+      <div class="space-y-4">
+        <% @invitations.each do |inv| %>
+          <div class="rounded-md border border-gray-200 p-3">
+            <div class="flex items-center justify-between gap-4">
+              <div>
+                <span class="font-medium"><%= inv.email %></span>
+                <span class="text-gray-500">as <%= inv.role %></span>
+                <span class="text-xs text-gray-500">
+                  &middot;
+                  <% if inv.expired? %>
+                    expired
+                  <% else %>
+                    expires in <%= distance_of_time_in_words(Time.current, inv.created_at + Invitation::EXPIRY) %>
+                  <% end %>
+                </span>
+              </div>
+              <%= button_to "Revoke", invitation_path(inv), method: :delete,
+                    class: "text-red-600 hover:underline text-sm cursor-pointer", form: { class: "inline" },
+                    data: { turbo_confirm: "Revoke this invitation? The link stops working immediately." } %>
+            </div>
+            <div class="mt-2 select-all break-all rounded-md border border-gray-200 bg-gray-50 px-3 py-2 font-mono text-xs">
+              <%= invite_url(inv.token) %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+  </section>
+
+  <section class="mt-10 max-w-lg">
+    <h2 class="text-sm font-semibold text-gray-500 uppercase mb-2">Invite someone</h2>
+    <p class="text-xs text-gray-500 mb-3">
+      No email is sent — copy the link above and send it yourself. The invitee's GitHub account email
+      must match the address here, and the link expires after 7 days.
+    </p>
+    <%= form_with url: invitations_path, scope: :invitation, class: "flex flex-wrap items-end gap-3" do |f| %>
+      <div class="flex flex-col grow">
+        <%= f.label :email, "Email", class: "text-xs text-gray-500 mb-1" %>
+        <%= f.email_field :email, placeholder: "teammate@example.com", required: true,
+              class: "rounded-md border border-gray-300 px-2 py-1.5 text-sm w-full" %>
+      </div>
+      <div class="flex flex-col">
+        <%= f.label :role, "Role", class: "text-xs text-gray-500 mb-1" %>
+        <%= f.select :role, [ %w[Member member], %w[Admin admin] ], {},
+              class: "rounded-md border border-gray-300 px-2 py-1.5 text-sm" %>
+      </div>
+      <div class="flex flex-col">
+        <%= f.label :project_id, "Project", class: "text-xs text-gray-500 mb-1" %>
+        <%= f.select :project_id, @projects.map { |p| [ p.name, p.id ] }, { include_blank: "None" },
+              class: "rounded-md border border-gray-300 px-2 py-1.5 text-sm" %>
+      </div>
+      <div class="flex flex-col">
+        <%= f.label :level, "Access", class: "text-xs text-gray-500 mb-1" %>
+        <%= f.select :level, [ [ "No access", "" ], %w[Viewer viewer], %w[Editor editor] ], {},
+              class: "rounded-md border border-gray-300 px-2 py-1.5 text-sm" %>
+      </div>
+      <%= f.submit "Create invitation", name: nil,
+            class: "rounded-md bg-blue-600 text-white px-3 py-1.5 text-sm hover:bg-blue-700 cursor-pointer" %>
+    <% end %>
+  </section>
+</div>
