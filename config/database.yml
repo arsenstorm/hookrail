@@ -92,18 +92,8 @@ test:
 # Read https://guides.rubyonrails.org/configuring.html#configuring-a-database
 # for a full overview on how database connection configuration can be specified.
 #
-# One DATABASE_URL drives everything. All Solid tables (cache/queue/cable) live in the same
-# database as primary; distinct table prefixes, so no collision. One env var to run anywhere.
+# One DATABASE_URL drives everything. All Solid tables (cache/queue/cable) live in the
+# primary database — created by a regular migration, so no multi-database config needed.
 production:
-  primary: &primary_production
-    <<: *default
-    url: <%= ENV["DATABASE_URL"] %>
-  cache:
-    <<: *primary_production
-    migrations_paths: db/cache_migrate
-  queue:
-    <<: *primary_production
-    migrations_paths: db/queue_migrate
-  cable:
-    <<: *primary_production
-    migrations_paths: db/cable_migrate
+  <<: *default
+  url: <%= ENV["DATABASE_URL"] %>
