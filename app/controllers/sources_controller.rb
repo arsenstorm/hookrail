@@ -48,6 +48,12 @@ class SourcesController < ApplicationController
   private
 
   def source_params
-    params.require(:source).permit(:name)
+    params.require(:source).permit(
+      :name,
+      :verification_secret, :verification_header, :verification_algorithm, :verification_encoding,
+      :verification_header_format, :verification_signature_prefix, :verification_signature_key,
+      :verification_timestamp_key, :verification_timestamp_header, :verification_payload_template,
+      :verification_tolerance_seconds
+    )
   end
 end

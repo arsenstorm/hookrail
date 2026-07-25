@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_25_131442) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_25_135834) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -85,6 +85,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_25_131442) do
     t.bigint "organization_id", null: false
     t.datetime "updated_at", null: false
     t.index ["organization_id"], name: "index_projects_on_organization_id"
+  end
+
+  create_table "quarantined_webhooks", force: :cascade do |t|
+    t.text "body"
+    t.datetime "created_at", null: false
+    t.jsonb "headers", default: {}, null: false
+    t.string "http_method", null: false
+    t.string "path"
+    t.string "query_string"
+    t.string "reason", null: false
+    t.datetime "received_at", null: false
+    t.bigint "source_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["source_id", "received_at"], name: "index_quarantined_webhooks_on_source_id_and_received_at"
+    t.index ["source_id"], name: "index_quarantined_webhooks_on_source_id"
   end
 
   create_table "solid_cable_messages", force: :cascade do |t|
@@ -235,6 +250,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_25_131442) do
     t.bigint "project_id", null: false
     t.string "token", null: false
     t.datetime "updated_at", null: false
+    t.jsonb "verification", default: {}, null: false
     t.index ["project_id"], name: "index_sources_on_project_id"
     t.index ["token"], name: "index_sources_on_token", unique: true
   end
@@ -259,6 +275,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_25_131442) do
   add_foreign_key "events", "sources"
   add_foreign_key "organizations", "users", column: "owner_id"
   add_foreign_key "projects", "organizations"
+  add_foreign_key "quarantined_webhooks", "sources"
   add_foreign_key "solid_queue_blocked_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_claimed_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_failed_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade

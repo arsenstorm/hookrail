@@ -8,6 +8,26 @@
   <dl class="text-sm grid grid-cols-[8rem_1fr] gap-y-1">
     <dt class="text-gray-500">Name</dt><dd><%= @source.name %></dd>
     <dt class="text-gray-500">Created</dt><dd><%= @source.created_at.strftime("%Y-%m-%d %H:%M:%S") %></dd>
+    <dt class="text-gray-500">Verification</dt>
+    <dd>
+      <% if @source.verification_enabled? %>
+        Enabled (<%= @source.verification_header.presence || "no header set" %>)
+      <% else %>
+        Disabled
+      <% end %>
+    </dd>
+    <dt class="text-gray-500">Quarantine</dt>
+    <dd>
+      <% count = @source.quarantined_webhooks.count %>
+      <%= link_to quarantined_webhooks_path, class: "text-blue-600 hover:underline" do %>
+        Quarantine
+        <% if count.positive? %>
+          <span class="ml-1 rounded-full bg-red-100 text-red-800 px-2 py-0.5 text-xs"><%= count %></span>
+        <% else %>
+          (0)
+        <% end %>
+      <% end %>
+    </dd>
   </dl>
 
   <section class="my-8">

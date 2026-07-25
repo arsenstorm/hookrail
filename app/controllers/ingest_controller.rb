@@ -11,6 +11,22 @@ class IngestController < ActionController::Base
     body = request.raw_post.to_s
     return head(:payload_too_large) if body.bytesize > MAX_BODY_BYTES
 
+    if source.verification_enabled?
+      result = Ingest::Verifier.verify(source: source, request: request, body: body)
+      unless result.ok?
+        source.quarantined_webhooks.create!(
+          http_method: request.request_method,
+          path: request.path,
+          query_string: request.query_string.presence,
+          headers: captured_headers,
+          body: body.presence,
+          reason: result.reason,
+          received_at: Time.current
+        )
+        return head(:unauthorized)
+      end
+    end
+
     event = source.events.create!(
       http_method: request.request_method,
       path: request.path,

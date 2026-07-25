@@ -16,6 +16,9 @@ Rails.application.routes.draw do
     resources :retries, only: :create
   end
 
+  # Webhooks rejected by inbound signature verification
+  resources :quarantined_webhooks, only: %i[index show], path: "quarantine"
+
   # Route management: sources, destinations, and the connections that wire them.
   resources :sources do
     member { patch :rotate_token }
