@@ -120,6 +120,20 @@ in the meantime — replay exists for that.
 
 Replay and manual retry are refused while a connection is not active.
 
+## Retry policy
+
+A failed delivery is retried after 10s, 1m, 5m, 30m and 2h — six attempts in all, and if the last one fails
+the delivery is marked dead.
+
+Each connection can replace that schedule with its own at *Connections → Edit*: a strategy, an interval in
+seconds, and a max attempt count. *Linear* waits the interval before every retry; *exponential* starts at the
+interval and doubles the wait each retry. Two hard caps apply, whichever is hit first, and both are checked
+when you save: at most 50 attempts, and the whole schedule must fit within 7 days.
+
+The policy governs every kind of failure — HTTP errors and transformation errors alike — and applies to manual
+retries and replays exactly as it does to first deliveries. Exhausting it marks the delivery dead, the same as
+running out the default schedule. Clear the three fields to go back to the default.
+
 ## Payload transformations
 
 Each connection can carry a JavaScript `transform(request)` function that reshapes the request before it is

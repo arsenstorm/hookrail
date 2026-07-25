@@ -6,15 +6,10 @@ class DeliverEventJob < ApplicationJob
 
   class DeliveryError < StandardError; end
 
-  retry_on DeliveryError,
-    attempts: MAX_ATTEMPTS,
-    wait: ->(executions) { BACKOFF[executions - 1] || BACKOFF.last } do |job, _error|
-    event_id, connection_id = job.arguments
-    Attempt.where(event_id: event_id, connection_id: connection_id)
-           .order(:attempt_number).last&.update!(status: :dead)
-  end
-
-  def perform(event_id, connection_id, replay: false)
+  # Retries are scheduled by hand instead of retry_on so each connection's
+  # retry_policy can shape its own schedule; retry_count rides along as a job
+  # argument because a re-enqueue resets ActiveJob's executions counter.
+  def perform(event_id, connection_id, replay: false, retry_count: 0)
     # Idempotency (Slice 5 R4): once any delivery for this pair has succeeded, never send
     # again. Covers a manual retry racing the still-scheduled automatic retry. Replays are
     # exempt: re-delivering an already-delivered event is exactly what a replay is.
@@ -69,6 +64,8 @@ class DeliverEventJob < ApplicationJob
       connection.record_delivery_failure
       raise DeliveryError
     end
+  rescue DeliveryError
+    retry_or_bury(event, connection, replay, retry_count)
   end
 
   private
@@ -96,8 +93,38 @@ class DeliverEventJob < ApplicationJob
     # Concurrent jobs raced to hold the same slot; one held row is enough.
   end
 
+  # This run was delivery attempt number retry_count + 1. Under the
+  # connection's attempt budget, schedule the next try per its policy
+  # (default: BACKOFF); over it, the delivery is permanently dead.
+  def retry_or_bury(event, connection, replay, retry_count)
+    retries_done = retry_count + 1
+    if retries_done < max_attempts_for(connection)
+      self.class.set(wait: wait_for(connection, retries_done))
+          .perform_later(event.id, connection.id, replay: replay, retry_count: retries_done)
+    else
+      Attempt.where(event_id: event.id, connection_id: connection.id)
+             .order(:attempt_number).last&.update!(status: :dead)
+    end
+  end
+
+  def max_attempts_for(connection)
+    connection.retry_policy.present? ? connection.retry_policy["max_attempts"] : MAX_ATTEMPTS
+  end
+
+  # Wait before attempt retries_done + 1: linear repeats the interval,
+  # exponential doubles it each retry starting from the interval.
+  def wait_for(connection, retries_done)
+    policy = connection.retry_policy
+    if policy.present?
+      interval = policy["interval"].seconds
+      policy["strategy"] == "exponential" ? interval * (2**(retries_done - 1)) : interval
+    else
+      BACKOFF[retries_done - 1] || BACKOFF.last
+    end
+  end
+
   # A manual retry pre-creates a :pending attempt to claim the delivery slot (Slice 5 R5).
-  # Consume it if present; automatic deliveries (ingest, retry_on) have none -> build fresh.
+  # Consume it if present; automatic deliveries (ingest, scheduled retries) have none -> build fresh.
   # ponytail: an orphaned :pending (claim created after a concurrent success) is left as-is;
   # harmless at dogfood scale, revisit if stuck-pending rows appear.
   def claim_or_build_attempt(event, connection, replay)

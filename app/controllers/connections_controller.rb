@@ -36,7 +36,8 @@ class ConnectionsController < ApplicationController
     @connection = Current.project.connections.includes(:source, :destination).find(params[:id])
     return render_preview if params[:preview].present?
 
-    if @connection.update(routing_rule: routing_rule_params, transformation: transformation_param)
+    if @connection.update(routing_rule: routing_rule_params, transformation: transformation_param,
+                          retry_policy: retry_policy_params)
       redirect_to connections_path, notice: "Connection updated."
     else
       load_preview_events
@@ -69,10 +70,26 @@ class ConnectionsController < ApplicationController
     params.require(:connection)[:transformation]
   end
 
+  # All three fields blank -> no policy (default schedule). Non-numeric input
+  # is passed through untouched so the model's validation can name the problem.
+  def retry_policy_params
+    raw = params.require(:connection)
+    values = [ raw[:retry_strategy], raw[:retry_interval], raw[:retry_max_attempts] ].map { |v| v.to_s.strip.presence }
+    return nil if values.all?(&:nil?)
+
+    strategy, interval, max_attempts = values
+    {
+      "strategy" => strategy,
+      "interval" => Integer(interval, exception: false) || interval,
+      "max_attempts" => Integer(max_attempts, exception: false) || max_attempts
+    }
+  end
+
   # Preview never saves: the submitted values are assigned so the re-rendered
   # form keeps them, then the code runs against one stored event.
   def render_preview
-    @connection.assign_attributes(routing_rule: routing_rule_params, transformation: transformation_param)
+    @connection.assign_attributes(routing_rule: routing_rule_params, transformation: transformation_param,
+                                  retry_policy: retry_policy_params)
     event = Event.joins(:source).where(sources: { project_id: Current.project.id })
                  .find_by(id: params[:preview_event_id])
     if @connection.transformation.blank?

@@ -136,6 +136,13 @@ Writable params under `connection`: `source_id`, `destination_id`, `status` (def
 delivery on this connection (see the README). Code that doesn't parse, or that never defines `transform`, is
 rejected with `422 validation_failed`; `null` removes the transform.
 
+`retry_policy` — a nullable object with `strategy` (`"linear"` or `"exponential"`), `interval` (a positive
+integer of seconds), and `max_attempts` (1–50). Without one, a failed delivery retries after 10s, 1m, 5m, 30m
+and 2h — six attempts, then dead. `"linear"` waits `interval` before every retry; `"exponential"` starts at
+`interval` and doubles the wait each retry. The whole schedule must fit within 7 days. Anything else — an
+unknown key, a bad strategy, an out-of-range `max_attempts`, a schedule running past 7 days — is
+`422 validation_failed`. Send `{}` (or omit all three fields) to clear it back to the default schedule.
+
 `status` is one of `"active"`, `"paused"`, or `"disabled"`; any other value is `422 validation_failed`. A
 paused connection still stores matched events but holds their deliveries instead of attempting them, and
 releases the held ones in the order the events arrived when you set it back to `"active"`. A disabled
@@ -165,6 +172,7 @@ curl -X POST https://hookrail.dev/api/v1/connections \
     "destination_id": 84,
     "status": "active",
     "transformation": null,
+    "retry_policy": null,
     "consecutive_failures": 0,
     "unhealthy_since": null,
     "created_at": "2026-07-25T15:07:29.644Z",

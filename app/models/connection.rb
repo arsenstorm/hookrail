@@ -6,6 +6,9 @@ class Connection < ApplicationRecord
 
   UNHEALTHY_THRESHOLD = 5
   RULE_KEYS = %w[path http_method headers body].freeze
+  RETRY_POLICY_KEYS = %w[strategy interval max_attempts].freeze
+  RETRY_MAX_ATTEMPTS = 50
+  RETRY_MAX_SPAN = 7.days
 
   scope :unhealthy, -> { where.not(unhealthy_since: nil) }
 
@@ -57,6 +60,10 @@ class Connection < ApplicationRecord
 
   before_validation { self.transformation = transformation.presence }
   validate :transformation_compiles
+
+  # Normalizes Parameters / symbol keys to a plain string-keyed hash; {} clears.
+  before_validation { self.retry_policy = retry_policy.to_h.stringify_keys.presence }
+  validate :retry_policy_shape
 
   # Blank rule -> routes everything (pre-rule behavior). Criteria AND together.
   # Values compare as strings so form input matches JSON numbers and booleans.
@@ -120,6 +127,28 @@ class Connection < ApplicationRecord
     Transformation::Runner.check!(transformation)
   rescue Transformation::Error => e
     errors.add(:transformation, e.message)
+  end
+
+  # Caps: at most 50 attempts, and no retry scheduled beyond 7 days after the
+  # first attempt — enforced at save time so a delivery never carries an
+  # unbounded retry tail.
+  def retry_policy_shape
+    policy = retry_policy
+    return if policy.blank?
+
+    unknown = policy.keys - RETRY_POLICY_KEYS
+    errors.add(:retry_policy, "has unknown keys: #{unknown.join(", ")}") if unknown.any?
+
+    strategy, interval, max_attempts = policy.values_at("strategy", "interval", "max_attempts")
+    errors.add(:retry_policy, "strategy must be linear or exponential") unless %w[linear exponential].include?(strategy)
+    errors.add(:retry_policy, "interval must be a positive integer of seconds") unless interval.is_a?(Integer) && interval.positive?
+    unless max_attempts.is_a?(Integer) && max_attempts.between?(1, RETRY_MAX_ATTEMPTS)
+      errors.add(:retry_policy, "max_attempts must be an integer between 1 and #{RETRY_MAX_ATTEMPTS}")
+    end
+    return if errors[:retry_policy].any?
+
+    span = interval * (strategy == "exponential" ? 2**(max_attempts - 1) - 1 : max_attempts - 1)
+    errors.add(:retry_policy, "schedule spans more than 7 days") if span.seconds > RETRY_MAX_SPAN
   end
 
   def rule_path_match?(pattern, path)

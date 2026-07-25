@@ -1,5 +1,6 @@
 <% content_for :title, "Edit connection" %>
 <% rule = @connection.routing_rule.to_h %>
+<% policy = @connection.retry_policy.to_h %>
 <div class="w-full max-w-4xl mx-auto py-16">
   <div class="flex items-center justify-between mb-6">
     <div>
@@ -95,6 +96,37 @@
           <pre class="bg-gray-50 rounded p-2 text-xs overflow-x-auto"><%= @preview[:body] %></pre>
         </div>
       <% end %>
+    </div>
+
+    <div class="border-t pt-4">
+      <h2 class="text-sm font-semibold text-gray-500 uppercase mb-2">Retry policy</h2>
+      <p class="text-xs text-gray-500 mb-2">
+        By default a failed delivery is retried after 10s, 1m, 5m, 30m and 2h — 6 attempts in all. A policy
+        here replaces that schedule for this connection only. At most 50 attempts, and the whole schedule
+        must fit within 7 days. Leave all three fields blank to keep the default.
+      </p>
+
+      <div class="grid grid-cols-3 gap-3">
+        <div class="col-span-3">
+          <%= f.label :retry_strategy, "Strategy", class: "block text-sm font-medium text-gray-700 mb-1" %>
+          <%= f.select :retry_strategy,
+                [ [ "Linear — same wait every retry", "linear" ], [ "Exponential — wait doubles each retry", "exponential" ] ],
+                { include_blank: "Default schedule", selected: policy["strategy"] },
+                class: "w-full rounded-md border border-gray-300 px-3 py-2 text-sm" %>
+        </div>
+
+        <div>
+          <%= f.label :retry_interval, "Interval (seconds)", class: "block text-sm font-medium text-gray-700 mb-1" %>
+          <%= f.number_field :retry_interval, value: policy["interval"], min: 1,
+                class: "w-full rounded-md border border-gray-300 px-3 py-2 text-sm" %>
+        </div>
+
+        <div>
+          <%= f.label :retry_max_attempts, "Max attempts", class: "block text-sm font-medium text-gray-700 mb-1" %>
+          <%= f.number_field :retry_max_attempts, value: policy["max_attempts"], min: 1, max: 50,
+                class: "w-full rounded-md border border-gray-300 px-3 py-2 text-sm" %>
+        </div>
+      </div>
     </div>
 
     <div class="flex items-center gap-4">
