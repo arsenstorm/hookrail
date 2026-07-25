@@ -24,7 +24,25 @@ class DeliverEventJob < ApplicationJob
     connection = Connection.find(connection_id)
     attempt = claim_or_build_attempt(event, connection, replay)
 
-    result = Delivery::Client.deliver(event: event, destination: connection.destination, replay: replay)
+    transformed = nil
+    if connection.transformation.present?
+      begin
+        transformed = Transformation::Runner.run(connection.transformation, event)
+      rescue Transformation::Error => e
+        # A broken transform is a failed delivery: nothing is sent, and it
+        # feeds the same retry/backoff and health alerting as an HTTP error.
+        attempt.update!(status: :failed, error: "TransformationError: #{e.message}")
+        connection.record_delivery_failure
+        raise DeliveryError
+      end
+      # Persisted by the status update below — what the transform produced,
+      # for per-delivery debugging.
+      attempt.assign_attributes(transformed_headers: transformed[:headers],
+                                transformed_body: transformed[:body])
+    end
+
+    result = Delivery::Client.deliver(event: event, destination: connection.destination,
+                                      replay: replay, transformed: transformed)
 
     if result.success?
       attempt.update!(

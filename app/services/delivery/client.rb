@@ -11,19 +11,20 @@ module Delivery
     # to a fresh connection. Compared case-insensitively.
     SKIP_FORWARD_HEADERS = %w[host content-length connection transfer-encoding keep-alive].freeze
 
-    def self.deliver(event:, destination:, replay: false)
-      new(event, destination, replay).deliver
+    def self.deliver(event:, destination:, replay: false, transformed: nil)
+      new(event, destination, replay, transformed).deliver
     end
 
-    def initialize(event, destination, replay = false)
+    def initialize(event, destination, replay = false, transformed = nil)
       @event = event
       @destination = destination
       @replay = replay
+      @transformed = transformed
     end
 
     def deliver
       uri = URI.parse(@destination.url)
-      body = @event.body.to_s
+      body = @transformed ? @transformed[:body] : @event.body.to_s
       request = build_request(uri, body)
 
       http = Net::HTTP.new(uri.host, uri.port)
@@ -54,7 +55,9 @@ module Delivery
       request = http_method_class.new(uri)
 
       # Forward the original inbound headers (Content-Type, etc.), minus hop-by-hop.
-      @event.headers.each do |name, value|
+      # A transform's headers replace the forwarded set entirely, but the same
+      # filter applies: a transform must not smuggle in Host/Content-Length.
+      (@transformed ? @transformed[:headers] : @event.headers).each do |name, value|
         next if SKIP_FORWARD_HEADERS.include?(name.to_s.downcase)
         request[name] = value.to_s
       end

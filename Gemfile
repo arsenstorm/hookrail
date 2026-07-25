@@ -19,6 +19,9 @@ gem "tailwindcss-rails"
 # Build JSON APIs with ease [https://github.com/rails/jbuilder]
 gem "jbuilder"
 
+# Sandboxed V8 for per-connection payload transformations
+gem "mini_racer"
+
 # Authentication via GitHub OAuth
 gem "omniauth-github"
 gem "omniauth-rails_csrf_protection"

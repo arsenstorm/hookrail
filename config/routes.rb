@@ -39,7 +39,10 @@ Rails.application.routes.draw do
 
   namespace :api do
     namespace :v1 do
-      resources :sources, :destinations, :connections, only: %i[index show create update destroy]
+      resources :sources, :destinations, only: %i[index show create update destroy]
+      resources :connections, only: %i[index show create update destroy] do
+        member { post :transformation_preview, to: "transformation_previews#create" }
+      end
       resources :events, only: %i[index show] do
         resources :attempts, only: :index
         resources :retries, only: :create

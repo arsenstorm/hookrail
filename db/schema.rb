@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_25_162743) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_25_164245) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -38,6 +38,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_25_162743) do
     t.text "response_body"
     t.integer "response_status"
     t.string "status", default: "pending", null: false
+    t.text "transformed_body"
+    t.jsonb "transformed_headers"
     t.datetime "updated_at", null: false
     t.index ["connection_id"], name: "index_attempts_on_connection_id"
     t.index ["event_id", "connection_id", "attempt_number"], name: "idx_attempts_on_event_connection_number", unique: true
@@ -52,6 +54,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_25_162743) do
     t.bigint "project_id", null: false
     t.jsonb "routing_rule", default: {}, null: false
     t.bigint "source_id", null: false
+    t.text "transformation"
     t.datetime "unhealthy_since"
     t.datetime "updated_at", null: false
     t.index ["destination_id"], name: "index_connections_on_destination_id"

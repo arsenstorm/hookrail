@@ -45,6 +45,9 @@ class Connection < ApplicationRecord
   before_validation { self.routing_rule = routing_rule.to_h.compact_blank }
   validate :routing_rule_shape
 
+  before_validation { self.transformation = transformation.presence }
+  validate :transformation_compiles
+
   # Blank rule -> routes everything (pre-rule behavior). Criteria AND together.
   # Values compare as strings so form input matches JSON numbers and booleans.
   def routes?(event)
@@ -74,6 +77,16 @@ class Connection < ApplicationRecord
     %w[headers body].each do |key|
       errors.add(:routing_rule, "#{key} must be an object") if rule[key].present? && !rule[key].is_a?(Hash)
     end
+  end
+
+  # Reject code that can't run before it ever gates a delivery; unchanged
+  # code is not re-checked on every save.
+  def transformation_compiles
+    return if transformation.blank? || !transformation_changed?
+
+    Transformation::Runner.check!(transformation)
+  rescue Transformation::Error => e
+    errors.add(:transformation, e.message)
   end
 
   def rule_path_match?(pattern, path)

@@ -37,6 +37,9 @@
                 <% if attempt.replay? %>
                   <span class="rounded-full bg-indigo-100 text-indigo-800 px-2 py-0.5 text-xs">replay</span>
                 <% end %>
+                <% if attempt.error&.start_with?("TransformationError:") %>
+                  <span class="rounded-full bg-amber-100 text-amber-800 px-2 py-0.5 text-xs">transform error</span>
+                <% end %>
                 <span class="text-gray-500"><%= attempt.status %></span>
                 <% if @retryable_attempt_ids.include?(attempt.id) %>
                   <%= button_to "Retry", event_retries_path(@event), params: { connection_id: attempt.connection_id },
@@ -60,6 +63,15 @@
               <div class="mt-2">
                 <div class="text-xs text-gray-500">Response body</div>
                 <pre class="bg-gray-50 rounded p-2 text-xs overflow-x-auto"><%= attempt.response_body %></pre>
+              </div>
+            <% end %>
+            <% if attempt.transformed_body.present? || attempt.transformed_headers.present? %>
+              <div class="mt-2">
+                <div class="text-xs font-medium text-gray-500">Transformed request</div>
+                <div class="text-xs text-gray-500 mt-1">Headers</div>
+                <pre class="bg-gray-50 rounded p-2 text-xs overflow-x-auto"><%= JSON.pretty_generate(attempt.transformed_headers.to_h) %></pre>
+                <div class="text-xs text-gray-500 mt-1">Body</div>
+                <pre class="bg-gray-50 rounded p-2 text-xs overflow-x-auto"><%= attempt.transformed_body %></pre>
               </div>
             <% end %>
           </div>

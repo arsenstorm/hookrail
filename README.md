@@ -96,3 +96,46 @@ Two things are skipped, and the notice counts only what was actually enqueued:
 - Events the connection's routing rule doesn't match — replay respects rules exactly as live delivery does.
 
 The same operation is available over the API as `POST /api/v1/events/bulk_replay`.
+
+## Payload transformations
+
+Each connection can carry a JavaScript `transform(request)` function that reshapes the request before it is
+forwarded. Edit it at *Connections → Edit*, below the rule fields. A connection without one forwards the
+event byte-identically.
+
+`request` has four fields:
+
+| Field | Meaning |
+| --- | --- |
+| `headers` | The headers the event arrived with, as an object. |
+| `body` | The received body. JSON bodies arrive **parsed**, so `request.body.type` works; anything else is the raw string. |
+| `path` | Path the webhook arrived on. Input only. |
+| `query` | Query string it arrived with. Input only. |
+
+Only `headers` and `body` of the returned object affect the outbound request. A body object is serialized to
+JSON, a body string is sent as-is. `path` and `query` are there for deriving values — deliveries always go to
+the destination's URL, so returning them changes nothing.
+
+```js
+function transform(request) {
+  return {
+    headers: { "Content-Type": "application/json", "X-Source": "hookrail" },
+    body: { id: request.body.id, status: request.body.data.object.status }
+  };
+}
+```
+
+The code runs in an embedded V8 isolate with no network, no filesystem, and no `require`/`import`, and is
+killed after 1 second. Code that doesn't parse or doesn't define `transform` is rejected when you save it.
+
+A transform that throws, times out, or returns a non-object fails the delivery **before anything is sent** —
+the destination never sees a half-transformed request. That failure is an ordinary delivery failure: it feeds
+the same retry schedule, backoff, and unhealthy-connection alerting as an HTTP error, and the attempt records
+an error starting with `TransformationError:`, shown on the event page behind a *transform error* pill.
+
+Transforms apply identically to first deliveries, automatic retries, manual retries, and replays. Each attempt
+stores the headers and body the transform produced, so you can see exactly what was sent.
+
+To try code before saving it, pick a recent event on the connection's edit page and hit *Preview*; nothing is
+delivered. The same preview is available over the API as
+`POST /api/v1/connections/:id/transformation_preview`.

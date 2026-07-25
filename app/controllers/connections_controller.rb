@@ -21,16 +21,19 @@ class ConnectionsController < ApplicationController
 
   def edit
     @connection = Current.project.connections.includes(:source, :destination).find(params[:id])
+    load_preview_events
   end
 
-  # The edit page edits ONLY the routing rule; a connection's endpoints are
-  # immutable after creation so attempt history always matches its route.
+  # The edit page edits the routing rule and the transformation; a connection's
+  # endpoints are immutable after creation so attempt history always matches its route.
   def update
-    @connection = Current.project.connections.find(params[:id])
-    if @connection.update(routing_rule: routing_rule_params)
-      redirect_to connections_path, notice: "Routing rule updated."
+    @connection = Current.project.connections.includes(:source, :destination).find(params[:id])
+    return render_preview if params[:preview].present?
+
+    if @connection.update(routing_rule: routing_rule_params, transformation: transformation_param)
+      redirect_to connections_path, notice: "Connection updated."
     else
-      @connection = Current.project.connections.includes(:source, :destination).find(params[:id])
+      load_preview_events
       render :edit, status: :unprocessable_entity
     end
   end
@@ -52,6 +55,38 @@ class ConnectionsController < ApplicationController
 
   def connection_params
     params.require(:connection).permit(:source_id, :destination_id)
+  end
+
+  def transformation_param
+    params.require(:connection)[:transformation]
+  end
+
+  # Preview never saves: the submitted values are assigned so the re-rendered
+  # form keeps them, then the code runs against one stored event.
+  def render_preview
+    @connection.assign_attributes(routing_rule: routing_rule_params, transformation: transformation_param)
+    event = Event.joins(:source).where(sources: { project_id: Current.project.id })
+                 .find_by(id: params[:preview_event_id])
+    if @connection.transformation.blank?
+      @preview_error = "No transformation code to preview."
+    elsif event.nil?
+      @preview_error = "Pick an event to preview against."
+    else
+      @preview = run_preview(@connection.transformation, event)
+    end
+    load_preview_events
+    render :edit
+  end
+
+  def run_preview(code, event)
+    Transformation::Runner.run(code, event)
+  rescue Transformation::Error => e
+    @preview_error = e.message
+    nil
+  end
+
+  def load_preview_events
+    @preview_events = @connection.source.events.order(received_at: :desc).limit(25)
   end
 
   def routing_rule_params

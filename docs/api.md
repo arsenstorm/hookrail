@@ -32,6 +32,7 @@ exist: `404`. Nothing about them is leaked.
 | 404 | `not_found` | Unknown id, or an id owned by another organization. |
 | 422 | `validation_failed` | Write rejected; `message` is the model's error sentence. |
 | 422 | `not_retryable` | The delivery's latest attempt is not `failed` or `dead`. |
+| 422 | `transformation_failed` | Preview code threw, timed out, or returned a non-object. |
 
 Write bodies are wrapped in the resource name (`{"source": {...}}`). A JSON body without the wrapper is
 wrapped automatically; other bodies without it return `400`.
@@ -129,7 +130,10 @@ connection of that source.
 | PATCH/PUT | `/api/v1/connections/:id` | `200` `{"connection": {...}}` |
 | DELETE | `/api/v1/connections/:id` | `204` — also deletes its attempts |
 
-Writable params under `connection`: `source_id`, `destination_id`, `active` (default `true`).
+Writable params under `connection`: `source_id`, `destination_id`, `active` (default `true`), and
+`transformation` — a nullable string of JavaScript defining `function transform(request)`, run against every
+delivery on this connection (see the README). Code that doesn't parse, or that never defines `transform`, is
+rejected with `422 validation_failed`; `null` removes the transform.
 
 A `source_id` or `destination_id` from another organization is rejected with `422 validation_failed`
 (`"Source must exist"`), not `404` — the id is resolved through your own project before assignment, so it
@@ -152,10 +156,47 @@ curl -X POST https://hookrail.dev/api/v1/connections \
     "source_id": 12,
     "destination_id": 84,
     "active": true,
+    "transformation": null,
     "consecutive_failures": 0,
     "unhealthy_since": null,
     "created_at": "2026-07-25T15:07:29.644Z",
     "updated_at": "2026-07-25T15:07:29.644Z"
+  }
+}
+```
+
+## Transformation preview
+
+`POST /api/v1/connections/:id/transformation_preview`
+
+Runs a transform against one stored event and returns what it produced. Nothing is delivered and nothing is
+saved — this is how you check code before writing it to the connection.
+
+| Param | Meaning |
+| --- | --- |
+| `event_id` | **Required.** An event in your organization; anything else is `404`. |
+| `code` | Optional JavaScript to preview, typically unsaved edits. Omitted, the connection's stored `transformation` runs. |
+
+The event is passed to `transform(request)` exactly as a real delivery would pass it: a JSON body arrives
+parsed, everything else as the raw string. The response is the transform's `headers` and `body` after
+normalization — the body is already serialized, so it is always a string.
+
+Code that throws, times out after 1 second, or returns a non-object is `422 transformation_failed`, with the
+JavaScript error in `message`. So is a request with no `code` against a connection that has no stored
+transformation.
+
+```sh
+curl -X POST https://hookrail.dev/api/v1/connections/74/transformation_preview \
+  -H "Authorization: Bearer $HOOKRAIL_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"event_id":4021,"code":"function transform(r) { return { headers: { \"X-Env\": \"prod\" }, body: { id: r.body.id } }; }"}'
+```
+
+```json
+{
+  "preview": {
+    "headers": {"X-Env": "prod"},
+    "body": "{\"id\":42}"
   }
 }
 ```
@@ -230,6 +271,11 @@ Statuses: `pending`, `delivering`, `succeeded`, `failed`, `dead`. `dead` means r
 `replay` is `true` when the attempt came from a [bulk replay](#bulk-replay) — those requests also carry the
 `X-Hookrail-Replay: true` header. Normal deliveries and retries report `false`.
 
+`transformed_headers` and `transformed_body` are the headers and body the connection's transform produced for
+this attempt — what was actually sent. Both are `null` when no transform ran, either because the connection
+has none or because it failed before sending; a failed transform instead shows up as an `error` starting with
+`TransformationError:`.
+
 ```sh
 curl https://hookrail.dev/api/v1/events/4021/attempts -H "Authorization: Bearer $HOOKRAIL_KEY"
 ```
@@ -248,7 +294,9 @@ curl https://hookrail.dev/api/v1/events/4021/attempts -H "Authorization: Bearer 
       "error": null,
       "duration_ms": 142,
       "attempted_at": "2026-07-25T15:07:29.667Z",
-      "replay": false
+      "replay": false,
+      "transformed_headers": null,
+      "transformed_body": null
     }
   ]
 }
