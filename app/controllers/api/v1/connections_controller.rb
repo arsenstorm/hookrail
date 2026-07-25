@@ -1,9 +1,9 @@
 module Api
   module V1
     class ConnectionsController < BaseController
-      def index = render json: { connections: scope.order(created_at: :desc).map { |c| connection_json(c) } }
+      def index = render(json: { connections: scope.order(created_at: :desc).map { |c| connection_json(c) } })
 
-      def show = render json: { connection: connection_json(scope.find(params[:id])) }
+      def show = render(json: { connection: connection_json(scope.find(params[:id])) })
 
       def create
         connection = Current.project.connections.new(connection_params)

@@ -1,9 +1,9 @@
 module Api
   module V1
     class DestinationsController < BaseController
-      def index = render json: { destinations: scope.order(:name).map { |d| destination_json(d) } }
+      def index = render(json: { destinations: scope.order(:name).map { |d| destination_json(d) } })
 
-      def show = render json: { destination: destination_json(scope.find(params[:id])) }
+      def show = render(json: { destination: destination_json(scope.find(params[:id])) })
 
       def create
         destination = Current.project.destinations.new(destination_params)

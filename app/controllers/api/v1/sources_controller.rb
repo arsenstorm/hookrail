@@ -1,9 +1,9 @@
 module Api
   module V1
     class SourcesController < BaseController
-      def index = render json: { sources: scope.order(:name).map { |s| source_json(s) } }
+      def index = render(json: { sources: scope.order(:name).map { |s| source_json(s) } })
 
-      def show = render json: { source: source_json(scope.find(params[:id])) }
+      def show = render(json: { source: source_json(scope.find(params[:id])) })
 
       def create
         source = Current.project.sources.new(source_params)
