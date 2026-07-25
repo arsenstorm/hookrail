@@ -5,8 +5,49 @@
     <%= link_to "Dashboard", root_path, class: "text-sm text-gray-500 hover:text-gray-700" %>
   </div>
 
+  <%= form_with url: events_path, method: :get, class: "flex flex-wrap items-end gap-3 mb-6" do |f| %>
+    <div class="flex flex-col">
+      <label class="text-xs text-gray-500 mb-1">Source</label>
+      <%= f.select :source_id,
+            options_for_select(@sources.map { |s| [ s.name, s.id ] }, @source_id),
+            { include_blank: "All sources" },
+            class: "rounded-md border border-gray-300 px-2 py-1.5 text-sm" %>
+    </div>
+    <div class="flex flex-col">
+      <label class="text-xs text-gray-500 mb-1">Status</label>
+      <%= f.select :status,
+            options_for_select(Event::DELIVERY_STATUSES.map { |s| [ s.capitalize, s ] }, @status),
+            { include_blank: "Any status" },
+            class: "rounded-md border border-gray-300 px-2 py-1.5 text-sm" %>
+    </div>
+    <div class="flex flex-col">
+      <label class="text-xs text-gray-500 mb-1">From</label>
+      <%= f.date_field :from, value: @from, class: "rounded-md border border-gray-300 px-2 py-1.5 text-sm" %>
+    </div>
+    <div class="flex flex-col">
+      <label class="text-xs text-gray-500 mb-1">To</label>
+      <%= f.date_field :to, value: @to, class: "rounded-md border border-gray-300 px-2 py-1.5 text-sm" %>
+    </div>
+    <div class="flex flex-col grow">
+      <label class="text-xs text-gray-500 mb-1">Body search</label>
+      <%= f.text_field :q, value: @q, placeholder: "substring…",
+            class: "rounded-md border border-gray-300 px-2 py-1.5 text-sm w-full" %>
+    </div>
+    <%= f.submit "Filter", name: nil,
+          class: "rounded-md bg-blue-600 text-white px-3 py-1.5 text-sm hover:bg-blue-700 cursor-pointer" %>
+    <% if @filters_active %>
+      <%= link_to "Clear", events_path, class: "px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700" %>
+    <% end %>
+  <% end %>
+
   <% if @events.empty? %>
-    <p class="text-gray-500">No events yet.</p>
+    <% if @filters_active %>
+      <p class="text-gray-500">No events match these filters.
+        <%= link_to "Clear filters", events_path, class: "text-blue-600 hover:underline" %>.
+      </p>
+    <% else %>
+      <p class="text-gray-500">No events yet.</p>
+    <% end %>
   <% else %>
     <table class="w-full text-sm">
       <thead class="text-left text-gray-500 border-b">
@@ -30,5 +71,13 @@
         <% end %>
       </tbody>
     </table>
+
+    <%# ponytail: forward-only cursor. "Newest" + browser-back cover "prev"; add a prev-cursor stack only if operators ask. %>
+    <div class="flex items-center justify-between mt-4">
+      <%= link_to "← Newest", events_path(@filter_params), class: "text-sm text-gray-500 hover:text-gray-700" %>
+      <% if @next_cursor %>
+        <%= link_to "Next →", events_path(@filter_params.merge(cursor: @next_cursor)), class: "text-sm text-blue-600 hover:underline" %>
+      <% end %>
+    </div>
   <% end %>
 </div>

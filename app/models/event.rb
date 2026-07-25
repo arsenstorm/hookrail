@@ -1,4 +1,44 @@
 class Event < ApplicationRecord
   belongs_to :source
   has_many :attempts, dependent: :destroy
+
+  # Rolled-up delivery status filter values, in UI display order.
+  DELIVERY_STATUSES = %w[delivered failed partial pending undelivered].freeze
+
+  # Attempt statuses that mean "still in flight" — no terminal outcome yet.
+  IN_FLIGHT_STATUSES = %w[pending delivering].freeze
+
+  # Filter events by their rolled-up delivery status. Buckets are mutually
+  # exclusive; precedence: undelivered -> pending (any in-flight attempt) ->
+  # delivered (all succeeded) -> failed (all failed/dead) -> partial (mixed).
+  # `delivering` is treated as in-flight so a mid-delivery event never reads as
+  # failed. An unknown value returns all (caller already guards).
+  scope :with_delivery_status, ->(status) {
+    case status
+    when "undelivered"
+      where.not(id: Attempt.select(:event_id))
+    when "pending"
+      where(id: Attempt.where(status: IN_FLIGHT_STATUSES).select(:event_id))
+    when "delivered"
+      where(id: Attempt.select(:event_id))
+        .where.not(id: Attempt.where.not(status: "succeeded").select(:event_id))
+    when "failed"
+      where(id: Attempt.select(:event_id))
+        .where.not(id: Attempt.where(status: "succeeded").select(:event_id))
+        .where.not(id: Attempt.where(status: IN_FLIGHT_STATUSES).select(:event_id))
+    when "partial"
+      where(id: Attempt.where(status: "succeeded").select(:event_id))
+        .where(id: Attempt.where(status: %w[failed dead]).select(:event_id))
+        .where.not(id: Attempt.where(status: IN_FLIGHT_STATUSES).select(:event_id))
+    else
+      all
+    end
+  }
+
+  # Keyset pagination: rows strictly older than the cursor row, in
+  # (received_at desc, id desc) order.
+  scope :before_cursor, ->(received_at, id) {
+    where("events.received_at < :ts OR (events.received_at = :ts AND events.id < :id)",
+          ts: received_at, id: id)
+  }
 end
