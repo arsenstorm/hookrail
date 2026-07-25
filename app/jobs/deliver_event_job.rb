@@ -74,6 +74,18 @@ class DeliverEventJob < ApplicationJob
     end
   rescue DeliveryError
     retry_or_bury(event, connection, replay, retry_count)
+  rescue ActiveRecord::RecordNotFound
+    raise
+  rescue StandardError => e
+    # Retries are chained by hand (see class comment), so an unrescued crash
+    # here would strand the attempt at "delivering" forever and sever the
+    # chain. Convert any crash into a normal failed delivery.
+    raise unless event && connection
+    if attempt&.delivering?
+      attempt.update!(status: :failed, error: "#{e.class}: #{e.message}")
+      connection.record_delivery_failure
+    end
+    retry_or_bury(event, connection, replay, retry_count)
   end
 
   private

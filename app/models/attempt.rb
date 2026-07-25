@@ -11,6 +11,11 @@ class Attempt < ApplicationRecord
     dead: "dead"
   }
 
+  # These carry response bodies, exception messages, and transform output —
+  # all of which can contain \0, which Postgres rejects at write time.
+  normalizes :error, :response_body, :transformed_body, with: DB_TEXT
+  normalizes :transformed_headers, with: ->(h) { h.transform_values { |v| DB_TEXT.call(v) } }
+
   # The retryable deliveries among `events`: the latest attempt per
   # (event, connection) pair that ended failed or dead, on a connection that
   # is currently active — paused/disabled connections don't retry.

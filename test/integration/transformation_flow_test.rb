@@ -69,6 +69,21 @@ class TransformationFlowTest < ActionDispatch::IntegrationTest
     assert_equal '{"got":"x"}', attempt.transformed_body
   end
 
+  test "transform output containing null bytes delivers and persists scrubbed" do
+    js = 'function transform(r) { return { headers: { "X-Bin": "a\u0000b" }, body: "x\u0000y" }; }'
+    project = create_test_project!
+    source, connection = build_connection!(project, transformation: js)
+    event = make_event!(source)
+    stub_request(:post, connection.destination.url).to_return(status: 200, body: "ok")
+
+    perform_enqueued_jobs { DeliverEventJob.perform_later(event.id, connection.id) }
+
+    attempt = Attempt.where(event: event, connection: connection).sole
+    assert attempt.succeeded?
+    assert_equal "xy", attempt.transformed_body
+    assert_equal "ab", attempt.transformed_headers["X-Bin"]
+  end
+
   test "a throwing transform fails the delivery without any outbound request" do
     project = create_test_project!
     source, connection = build_connection!(project, transformation: THROWING_TRANSFORM)

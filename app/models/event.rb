@@ -2,6 +2,11 @@ class Event < ApplicationRecord
   belongs_to :source
   has_many :attempts, dependent: :destroy
 
+  # Raw wire data from arbitrary senders — scrub \0/invalid UTF-8 or the
+  # ingest INSERT raises and the webhook 500s.
+  normalizes :body, with: DB_TEXT
+  normalizes :headers, with: ->(h) { h.transform_values { |v| DB_TEXT.call(v) } }
+
   # Rolled-up delivery status filter values, in UI display order.
   DELIVERY_STATUSES = %w[delivered failed partial pending undelivered duplicate].freeze
 

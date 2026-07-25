@@ -69,6 +69,47 @@ class DeliveryFlowTest < ActionDispatch::IntegrationTest
     assert_equal "example.test", captured.headers["Host"]
   end
 
+  test "persists a response body containing null bytes" do
+    stub_request(:post, @destination.url).to_return(status: 200, body: "ok\0bin")
+    ingest!
+    attempt = Attempt.where(connection: @connection).sole
+    assert attempt.succeeded?
+    assert_equal "okbin", attempt.response_body
+  end
+
+  test "a null byte in a failure message still records the failure and retries" do
+    stub_request(:post, @destination.url).to_raise(StandardError.new("boom\0byte"))
+    ingest!
+    attempts = Attempt.where(connection: @connection).order(:attempt_number)
+    assert_equal DeliverEventJob::MAX_ATTEMPTS, attempts.count
+    assert attempts.first.failed?
+    assert_equal "StandardError: boombyte", attempts.first.error
+    assert attempts.last.dead?
+  end
+
+  test "an unexpected crash mid-delivery fails the attempt instead of stranding it at delivering" do
+    original = Delivery::Client.method(:deliver)
+    Delivery::Client.define_singleton_method(:deliver) { |**| raise "kaboom" }
+    begin
+      ingest!
+    ensure
+      Delivery::Client.define_singleton_method(:deliver, original)
+    end
+    attempts = Attempt.where(connection: @connection).order(:attempt_number)
+    assert_equal DeliverEventJob::MAX_ATTEMPTS, attempts.count
+    assert_equal 0, attempts.delivering.count
+    assert attempts.first.failed?
+    assert_match "kaboom", attempts.first.error.to_s
+    assert attempts.last.dead?
+  end
+
+  test "ingests a raw body containing null bytes" do
+    stub_request(:post, @destination.url).to_return(status: 200, body: "ok")
+    ingest!(body: "bin\0body", headers: { "Content-Type" => "text/plain" })
+    assert_equal "binbody", Event.last.body
+    assert Attempt.where(connection: @connection).sole.succeeded?
+  end
+
   test "fans out to every active connection" do
     dest2 = Destination.create!(name: "Dest2", url: "https://example.test/hook2", project: @project)
     Connection.create!(source: @source, destination: dest2, active: true, project: @project)
