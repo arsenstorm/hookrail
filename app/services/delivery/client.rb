@@ -6,10 +6,16 @@ module Delivery
     TIMEOUT_SECONDS = 10
     MAX_RESPONSE_BODY = 10_000
 
-    # Hop-by-hop / connection-specific headers that must not be forwarded: Net::HTTP
-    # recomputes Content-Length and Host for the new request, and the rest don't apply
-    # to a fresh connection. Compared case-insensitively.
-    SKIP_FORWARD_HEADERS = %w[host content-length connection transfer-encoding keep-alive].freeze
+    # Hop-by-hop / connection-specific headers that must not be forwarded, plus the
+    # proxy trail our own edge (Cloudflare, Railway) stamps on inbound requests:
+    # forwarded Cf-*/X-Forwarded-* headers read as spoofing to WAFs at CDN-fronted
+    # destinations (they answer 403), and an explicit Accept-Encoding disables
+    # Net::HTTP's transparent decompression, landing compressed bytes in
+    # response_body. Compared case-insensitively.
+    SKIP_FORWARD_HEADERS = %w[host content-length connection transfer-encoding keep-alive
+                              accept-encoding x-real-ip x-request-start x-sendfile-type
+                              cdn-loop].freeze
+    SKIP_FORWARD_PREFIXES = %w[cf- x-forwarded- x-railway-].freeze
 
     def self.deliver(event:, destination:, replay: false, transformed: nil)
       new(event, destination, replay, transformed).deliver
@@ -58,7 +64,7 @@ module Delivery
       # A transform's headers replace the forwarded set entirely, but the same
       # filter applies: a transform must not smuggle in Host/Content-Length.
       (@transformed ? @transformed[:headers] : @event.headers).each do |name, value|
-        next if SKIP_FORWARD_HEADERS.include?(name.to_s.downcase)
+        next unless forwardable?(name)
         request[name] = value.to_s
       end
 
@@ -71,6 +77,12 @@ module Delivery
       request["X-Hookrail-Replay"] = "true" if @replay
       request.body = body
       request
+    end
+
+    def forwardable?(name)
+      n = name.to_s.downcase
+      return false if SKIP_FORWARD_HEADERS.include?(n)
+      SKIP_FORWARD_PREFIXES.none? { |prefix| n.start_with?(prefix) }
     end
 
     def http_method_class

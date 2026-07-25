@@ -62,11 +62,22 @@ class DeliveryFlowTest < ActionDispatch::IntegrationTest
     stub_request(:post, @destination.url)
       .with { |req| captured = req; true }
       .to_return(status: 200)
-    ingest!(body: '{"a":1}', headers: { "Content-Type" => "application/json", "X-Custom" => "keep-me" })
+    ingest!(body: '{"a":1}', headers: {
+      "Content-Type" => "application/json", "X-Custom" => "keep-me",
+      "Cf-Ray" => "abc-LHR", "Cf-Connecting-Ip" => "1.2.3.4",
+      "X-Forwarded-For" => "1.2.3.4, 5.6.7.8", "X-Real-Ip" => "1.2.3.4",
+      "X-Railway-Edge" => "cdg1", "Accept-Encoding" => "gzip, br"
+    })
     assert_equal "application/json", captured.headers["Content-Type"]
     assert_equal "keep-me", captured.headers["X-Custom"]
     # Host is the destination's host, not the inbound request's (hop-by-hop dropped).
     assert_equal "example.test", captured.headers["Host"]
+    # The ingest edge's proxy trail must not reach the destination (WAFs 403 it),
+    # and Accept-Encoding stays Net::HTTP's own so decompression is transparent.
+    %w[Cf-Ray Cf-Connecting-Ip X-Forwarded-For X-Real-Ip X-Railway-Edge].each do |h|
+      assert_nil captured.headers[h], "#{h} must not be forwarded"
+    end
+    assert_not_equal "gzip, br", captured.headers["Accept-Encoding"]
   end
 
   test "persists a response body containing null bytes" do
