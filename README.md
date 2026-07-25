@@ -139,3 +139,44 @@ stores the headers and body the transform produced, so you can see exactly what 
 To try code before saving it, pick a recent event on the connection's edit page and hit *Preview*; nothing is
 delivered. The same preview is available over the API as
 `POST /api/v1/connections/:id/transformation_preview`.
+
+## Alert webhooks
+
+The three incident alerts Hookrail sends by email — a connection going unhealthy, that connection recovering,
+and an inbound webhook being quarantined — can also be POSTed as signed JSON to one URL per organization.
+Point chat or incident tooling at it and you stop depending on someone reading an inbox. Configure it at
+*Dashboard → Alert webhook*, or over the API at `/api/v1/alert_webhook`.
+
+Every alert has the same envelope: a `type`, the ISO 8601 UTC `occurred_at`, and a per-type `data` object.
+
+```json
+{
+  "type": "connection.unhealthy",
+  "occurred_at": "2026-07-25T15:07:29Z",
+  "data": {
+    "source": "Stripe",
+    "destination": "Billing worker",
+    "consecutive_failures": 5,
+    "unhealthy_since": "2026-07-25T15:06:58Z"
+  }
+}
+```
+
+| `type` | `data` fields |
+| --- | --- |
+| `connection.unhealthy` | `source`, `destination`, `consecutive_failures`, `unhealthy_since` |
+| `connection.recovered` | `source`, `destination` |
+| `webhook.quarantined` | `source`, `reason`, `received_at` |
+| `test` | `message` — sent only by the *Send test alert* button |
+
+Requests are signed exactly like outbound event deliveries: `X-Hookrail-Timestamp` carries the Unix time the
+request was built, and `X-Hookrail-Signature` is `sha256=` followed by the HMAC-SHA256 of
+`"<timestamp>.<body>"`. The key is a per-org secret, shown next to the URL on the settings page. It is
+generated the first time you set a URL, survives later edits to that URL so receivers keep verifying, and is
+discarded when you remove the webhook — setting a URL again mints a new one.
+
+Delivery is asynchronous and deliberately expendable: three attempts with backoff, and if the receiver is
+still not answering with a 2xx, the alert is dropped with a log line. A failing alert webhook never generates
+an alert of its own, never counts against connection health, and never blocks or slows event delivery — there
+is no recursion here by design. Use *Send test alert* to fire a sample `test` payload through the same path
+and confirm the receiver accepts it.

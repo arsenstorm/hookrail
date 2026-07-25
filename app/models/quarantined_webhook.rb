@@ -1,5 +1,5 @@
 class QuarantinedWebhook < ApplicationRecord
   belongs_to :source
 
-  after_create_commit { AlertMailer.webhook_quarantined(self).deliver_later }
+  after_create_commit { Alerts.webhook_quarantined(self) }
 end

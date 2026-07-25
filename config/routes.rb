@@ -37,12 +37,18 @@ Rails.application.routes.draw do
   # Org-scoped API keys managed in the UI; the JSON API below authenticates with them.
   resources :api_keys, only: %i[index create destroy]
 
+  # One alert webhook per org, mirrored by the JSON API.
+  resource :alert_webhook, only: %i[show update destroy] do
+    post :test
+  end
+
   namespace :api do
     namespace :v1 do
       resources :sources, :destinations, only: %i[index show create update destroy]
       resources :connections, only: %i[index show create update destroy] do
         member { post :transformation_preview, to: "transformation_previews#create" }
       end
+      resource :alert_webhook, only: %i[show update destroy]
       resources :events, only: %i[index show] do
         resources :attempts, only: :index
         resources :retries, only: :create

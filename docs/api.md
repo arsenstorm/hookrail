@@ -383,3 +383,72 @@ curl -X POST https://hookrail.dev/api/v1/events/bulk_replay \
 ```json
 {"enqueued": 2}
 ```
+
+## Alert webhook
+
+An org-scoped singleton: one URL that receives the incident alerts Hookrail otherwise only emails.
+
+| Method | Path | Result |
+| --- | --- | --- |
+| GET | `/api/v1/alert_webhook` | `200` `{"alert_webhook": {"url": ..., "secret": ...}}`; both `null` when unconfigured |
+| PATCH/PUT | `/api/v1/alert_webhook` | `200` `{"alert_webhook": {...}}` with the URL and its signing secret |
+| DELETE | `/api/v1/alert_webhook` | `204`, clearing both the URL and the secret |
+
+Unlike a destination's `signing_secret`, this secret **is** returned. That exception is deliberate: the
+operator reading this endpoint is the one configuring the receiver on the other side, and they need the key to
+verify what arrives.
+
+Writable param under `alert_webhook`: `url`, which must be an `http(s)` URL — anything else is `422`
+`validation_failed`. The secret is generated when a URL is first set and survives later URL edits, so a
+receiver you already wired up keeps verifying. Only a `DELETE` discards it; setting a URL afterwards mints a
+new one.
+
+```sh
+curl -X PUT https://hookrail.dev/api/v1/alert_webhook \
+  -H "Authorization: Bearer $HOOKRAIL_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"alert_webhook":{"url":"https://hooks.example.com/hookrail"}}'
+```
+
+```json
+{
+  "alert_webhook": {
+    "url": "https://hooks.example.com/hookrail",
+    "secret": "2f1c9a0b7d4e63a85c19f2b0d7e4a316c8b5f0912a7d43e6"
+  }
+}
+```
+
+### What the receiver gets
+
+A `POST` with a JSON body carrying a `type`, the ISO 8601 UTC `occurred_at`, and a per-type `data` object:
+
+```json
+{
+  "type": "connection.unhealthy",
+  "occurred_at": "2026-07-25T15:07:29Z",
+  "data": {
+    "source": "Stripe",
+    "destination": "Billing worker",
+    "consecutive_failures": 5,
+    "unhealthy_since": "2026-07-25T15:06:58Z"
+  }
+}
+```
+
+| `type` | `data` fields |
+| --- | --- |
+| `connection.unhealthy` | `source`, `destination`, `consecutive_failures`, `unhealthy_since` |
+| `connection.recovered` | `source`, `destination` |
+| `webhook.quarantined` | `source`, `reason`, `received_at` |
+| `test` | `message`, from the *Send test alert* button in the UI |
+
+Two headers sign the request, the same pair and construction as outbound event deliveries:
+
+| Header | Value |
+| --- | --- |
+| `X-Hookrail-Timestamp` | Unix seconds when the request was built. |
+| `X-Hookrail-Signature` | `sha256=` + HMAC-SHA256 of `"<timestamp>.<body>"`, keyed by the secret above. |
+
+Delivery is asynchronous with three bounded attempts; after that the alert is dropped with a log line. Alert
+delivery never generates alerts of its own and never affects event deliveries.

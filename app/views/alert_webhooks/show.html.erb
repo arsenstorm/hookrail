@@ -1,0 +1,83 @@
+<% content_for :title, "Alert webhook" %>
+<% organization = Current.organization %>
+<div class="w-full max-w-4xl mx-auto py-16">
+  <div class="flex items-center justify-between mb-6">
+    <h1 class="text-2xl font-semibold">Alert webhook</h1>
+    <%= link_to "Dashboard", root_path, class: "text-sm text-gray-500 hover:text-gray-700" %>
+  </div>
+
+  <p class="text-sm text-gray-600 mb-6 max-w-lg">
+    The three incident alerts that go out by email also POST signed JSON here. Point your chat or
+    incident tooling at it to get them without watching an inbox.
+  </p>
+
+  <%= form_with model: organization, url: alert_webhook_path, method: :patch, scope: :organization,
+        class: "space-y-4 max-w-lg" do |f| %>
+    <% if organization.errors.any? %>
+      <div class="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-800">
+        <ul class="list-disc list-inside">
+          <% organization.errors.full_messages.each do |m| %><li><%= m %></li><% end %>
+        </ul>
+      </div>
+    <% end %>
+
+    <div>
+      <%= f.label :alert_webhook_url, "URL", class: "block text-sm font-medium text-gray-700 mb-1" %>
+      <%= f.text_field :alert_webhook_url, placeholder: "https://hooks.example.com/hookrail",
+            class: "w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-mono" %>
+    </div>
+
+    <%= f.submit "Save", class: "rounded-md bg-blue-600 text-white px-3 py-1.5 text-sm hover:bg-blue-700 cursor-pointer" %>
+  <% end %>
+
+  <% if organization.alert_webhook_configured? %>
+    <div class="mt-8 max-w-lg">
+      <h2 class="text-sm font-medium text-gray-700 mb-1">Signing secret</h2>
+      <div class="select-all break-all rounded-md border border-gray-200 bg-gray-50 px-3 py-2 font-mono text-sm">
+        <%= organization.alert_webhook_secret %>
+      </div>
+      <p class="mt-2 text-xs text-gray-500">
+        Verify <code>X-Hookrail-Signature</code> as the HMAC-SHA256 of <code>"timestamp.body"</code> with this
+        secret — the same scheme as event deliveries, see the README.
+      </p>
+
+      <div class="mt-4 flex items-center gap-4">
+        <%= button_to "Send test alert", test_alert_webhook_path,
+              class: "rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer" %>
+        <%= button_to "Remove", alert_webhook_path, method: :delete,
+              class: "text-red-600 hover:underline text-sm cursor-pointer",
+              data: { turbo_confirm: "Remove the alert webhook? The signing secret is discarded with it." } %>
+      </div>
+    </div>
+  <% end %>
+
+  <div class="mt-10 max-w-lg">
+    <h2 class="text-sm font-semibold text-gray-500 uppercase mb-2">Alert types</h2>
+    <table class="w-full text-sm">
+      <thead class="text-left text-gray-500 border-b">
+        <tr>
+          <th class="py-2 font-medium">Type</th>
+          <th class="py-2 font-medium">Sent when</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="border-b">
+          <td class="py-2 font-mono text-xs">connection.unhealthy</td>
+          <td class="py-2">A connection crossed its consecutive-failure threshold.</td>
+        </tr>
+        <tr class="border-b">
+          <td class="py-2 font-mono text-xs">connection.recovered</td>
+          <td class="py-2">An unhealthy connection delivered successfully again.</td>
+        </tr>
+        <tr class="border-b">
+          <td class="py-2 font-mono text-xs">webhook.quarantined</td>
+          <td class="py-2">An inbound webhook failed signature verification.</td>
+        </tr>
+        <tr class="border-b">
+          <td class="py-2 font-mono text-xs">test</td>
+          <td class="py-2">You hit <em>Send test alert</em>.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
