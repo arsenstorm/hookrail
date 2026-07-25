@@ -32,6 +32,7 @@ class DeliverEventJob < ApplicationJob
         response_body: result.body_excerpt,
         duration_ms: result.duration_ms
       )
+      connection.record_delivery_success
     else
       attempt.update!(
         status: :failed,
@@ -40,6 +41,7 @@ class DeliverEventJob < ApplicationJob
         error: result.error,
         duration_ms: result.duration_ms
       )
+      connection.record_delivery_failure
       raise DeliveryError
     end
   end

@@ -1,0 +1,8 @@
+Delivery is failing on <%= @connection.source.name %> → <%= @connection.destination.name %>.
+
+Consecutive failures: <%= @connection.consecutive_failures %>
+Failing since: <%= @connection.unhealthy_since.utc.strftime("%Y-%m-%d %H:%M UTC") %>
+
+Hookrail keeps retrying this route. You will get one more email when it recovers.
+
+<%= connections_url %>

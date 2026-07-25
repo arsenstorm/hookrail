@@ -1,0 +1,19 @@
+<% if @unhealthy_connections.present? %>
+  <div role="alert" class="mb-8 rounded-md border border-red-200 bg-red-50 px-4 py-3">
+    <h2 class="text-sm font-semibold text-red-800">
+      <%= pluralize(@unhealthy_connections.size, "connection") %> failing delivery
+    </h2>
+    <ul class="mt-2 space-y-1 text-sm text-red-800">
+      <% @unhealthy_connections.each do |connection| %>
+        <li>
+          <span class="font-medium"><%= connection.source.name %> <span class="text-red-400">→</span> <%= connection.destination.name %></span>
+          <span class="text-red-700">— failing for <%= time_ago_in_words(connection.unhealthy_since) %></span>
+        </li>
+      <% end %>
+    </ul>
+    <% if local_assigns.fetch(:link, true) %>
+      <%= link_to "View connections →", connections_path,
+            class: "mt-2 inline-block text-sm font-medium text-red-800 underline hover:no-underline" %>
+    <% end %>
+  </div>
+<% end %>

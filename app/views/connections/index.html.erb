@@ -8,6 +8,8 @@
     </div>
   </div>
 
+  <%= render "shared/unhealthy_banner", link: false %>
+
   <% if @connections.empty? %>
     <p class="text-gray-500">No connections yet.</p>
   <% else %>
@@ -28,6 +30,12 @@
                 <span class="text-green-700">active</span>
               <% else %>
                 <span class="text-gray-400">inactive</span>
+              <% end %>
+              <% if connection.unhealthy? %>
+                <div class="mt-1 flex items-center gap-1.5">
+                  <span class="rounded-full bg-red-100 text-red-800 px-2 py-0.5 text-xs">unhealthy</span>
+                  <span class="text-xs text-red-700">failing for <%= time_ago_in_words(connection.unhealthy_since) %></span>
+                </div>
               <% end %>
             </td>
             <td class="py-2">

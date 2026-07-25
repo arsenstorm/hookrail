@@ -1,6 +1,7 @@
 class ConnectionsController < ApplicationController
   def index
     @connections = Current.project.connections.includes(:source, :destination).order(created_at: :desc)
+    @unhealthy_connections = Current.project.connections.unhealthy.includes(:source, :destination)
   end
 
   def new
