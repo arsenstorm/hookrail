@@ -1,0 +1,42 @@
+<% content_for :title, "Destinations" %>
+<div class="w-full max-w-4xl mx-auto py-16">
+  <div class="flex items-center justify-between mb-6">
+    <h1 class="text-2xl font-semibold">Destinations</h1>
+    <div class="flex items-center gap-4">
+      <%= link_to "New destination", new_destination_path, class: "text-blue-600 hover:underline" %>
+      <%= link_to "Dashboard", root_path, class: "text-sm text-gray-500 hover:text-gray-700" %>
+    </div>
+  </div>
+
+  <% if @destinations.empty? %>
+    <p class="text-gray-500">No destinations yet.</p>
+  <% else %>
+    <table class="w-full text-sm">
+      <thead class="text-left text-gray-500 border-b">
+        <tr>
+          <th class="py-2 font-medium">Name</th>
+          <th class="py-2 font-medium">URL</th>
+          <th class="py-2 font-medium">Created</th>
+          <th class="py-2 font-medium"></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @destinations.each do |destination| %>
+          <tr class="border-b hover:bg-gray-50">
+            <td class="py-2">
+              <%= link_to destination.name, destination_path(destination), class: "text-blue-600 hover:underline" %>
+            </td>
+            <td class="py-2">
+              <span class="text-xs text-gray-500"><%= destination.url %></span>
+            </td>
+            <td class="py-2"><%= destination.created_at.strftime("%Y-%m-%d %H:%M") %></td>
+            <td class="py-2">
+              <%= link_to "Edit", edit_destination_path(destination), class: "text-blue-600 hover:underline" %>
+              <%= button_to "Delete", destination_path(destination), method: :delete, class: "text-red-600 hover:underline text-sm", form: { class: "inline" }, data: { turbo_confirm: "Delete this destination? This also deletes its connections and delivery attempts." } %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  <% end %>
+</div>

@@ -1,0 +1,37 @@
+<% content_for :title, "Source: #{@source.name}" %>
+<div class="w-full max-w-4xl mx-auto py-16">
+  <div class="flex items-center justify-between mb-6">
+    <h1 class="text-2xl font-semibold">Source: <%= @source.name %></h1>
+    <%= link_to "Dashboard", root_path, class: "text-sm text-gray-500 hover:text-gray-700" %>
+  </div>
+
+  <dl class="text-sm grid grid-cols-[8rem_1fr] gap-y-1">
+    <dt class="text-gray-500">Name</dt><dd><%= @source.name %></dd>
+    <dt class="text-gray-500">Created</dt><dd><%= @source.created_at.strftime("%Y-%m-%d %H:%M:%S") %></dd>
+  </dl>
+
+  <section class="my-8">
+    <h2 class="text-sm font-semibold text-gray-500 uppercase mb-2">Ingest URL</h2>
+    <div class="flex gap-2 max-w-2xl">
+      <input type="text" readonly id="ingest-url" value="<%= ingest_url(token: @source.token) %>"
+             class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm bg-gray-50">
+      <button type="button"
+              onclick="navigator.clipboard.writeText(document.getElementById('ingest-url').value)"
+              class="rounded-md border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50 whitespace-nowrap">Copy</button>
+    </div>
+    <p class="text-xs text-gray-500 mt-1">POST webhooks here. Rotating the token invalidates this URL.</p>
+  </section>
+
+  <div class="flex items-center gap-3">
+    <%= link_to "Edit", edit_source_path(@source), class: "rounded-md border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50" %>
+    <%= button_to "Rotate token", rotate_token_source_path(@source), method: :patch,
+          class: "rounded-md border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50",
+          form: { class: "inline" },
+          data: { turbo_confirm: "Rotate the ingest token? The current URL will stop working immediately." } %>
+    <%= button_to "Delete", source_path(@source), method: :delete,
+          class: "rounded-md border border-gray-300 px-3 py-1.5 text-sm text-red-600 hover:bg-gray-50",
+          form: { class: "inline" },
+          data: { turbo_confirm: "Delete this source? This also deletes all its events and delivery attempts." } %>
+    <%= link_to "← Sources", sources_path, class: "text-sm text-gray-500 hover:text-gray-700" %>
+  </div>
+</div>

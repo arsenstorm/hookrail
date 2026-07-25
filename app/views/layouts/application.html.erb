@@ -24,6 +24,12 @@
   </head>
 
   <body>
+    <% if notice || alert %>
+      <div class="container mx-auto px-5 mt-4">
+        <% if notice %><p class="rounded-md bg-green-50 text-green-800 px-3 py-2 text-sm"><%= notice %></p><% end %>
+        <% if alert %><p class="rounded-md bg-red-50 text-red-800 px-3 py-2 text-sm"><%= alert %></p><% end %>
+      </div>
+    <% end %>
     <main class="container mx-auto mt-28 px-5 flex">
       <%= yield %>
     </main>

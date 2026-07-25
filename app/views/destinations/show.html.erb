@@ -1,0 +1,47 @@
+<% content_for :title, "Destination: #{@destination.name}" %>
+<div class="w-full max-w-4xl mx-auto py-16">
+  <div class="flex items-center justify-between mb-6">
+    <h1 class="text-2xl font-semibold">Destination: <%= @destination.name %></h1>
+    <%= link_to "Dashboard", root_path, class: "text-sm text-gray-500 hover:text-gray-700" %>
+  </div>
+
+  <dl class="text-sm grid grid-cols-[8rem_1fr] gap-y-1">
+    <dt class="text-gray-500">Name</dt><dd><%= @destination.name %></dd>
+    <dt class="text-gray-500">URL</dt><dd><%= @destination.url %></dd>
+    <dt class="text-gray-500">Created</dt><dd><%= @destination.created_at.strftime("%Y-%m-%d %H:%M:%S") %></dd>
+  </dl>
+
+  <section class="my-8">
+    <h2 class="text-sm font-semibold text-gray-500 uppercase mb-2">Custom headers</h2>
+    <% if @destination.headers.blank? %>
+      <p class="text-gray-500 text-sm">None.</p>
+    <% else %>
+      <pre class="bg-gray-50 rounded p-3 text-xs overflow-x-auto"><%= @destination.headers.map { |k, v| "#{k}: #{v}" }.join("\n") %></pre>
+    <% end %>
+  </section>
+
+  <section class="my-8">
+    <h2 class="text-sm font-semibold text-gray-500 uppercase mb-2">Signing secret</h2>
+    <div class="flex gap-2 max-w-2xl">
+      <input type="text" readonly id="signing-secret" value="<%= @destination.signing_secret %>"
+             class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm bg-gray-50">
+      <button type="button"
+              onclick="navigator.clipboard.writeText(document.getElementById('signing-secret').value)"
+              class="rounded-md border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50 whitespace-nowrap">Copy</button>
+    </div>
+    <p class="text-xs text-gray-500 mt-1">Used to HMAC-sign forwarded payloads.</p>
+  </section>
+
+  <div class="flex items-center gap-3">
+    <%= link_to "Edit", edit_destination_path(@destination), class: "rounded-md border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50" %>
+    <%= button_to "Rotate secret", rotate_secret_destination_path(@destination), method: :patch,
+          class: "rounded-md border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50",
+          form: { class: "inline" },
+          data: { turbo_confirm: "Rotate the signing secret? Forwarded payloads will be signed with the new secret from now on." } %>
+    <%= button_to "Delete", destination_path(@destination), method: :delete,
+          class: "rounded-md border border-gray-300 px-3 py-1.5 text-sm text-red-600 hover:bg-gray-50",
+          form: { class: "inline" },
+          data: { turbo_confirm: "Delete this destination? This also deletes its connections and delivery attempts." } %>
+    <%= link_to "← Destinations", destinations_path, class: "text-sm text-gray-500 hover:text-gray-700" %>
+  </div>
+</div>

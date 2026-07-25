@@ -1,0 +1,45 @@
+<% content_for :title, "Connections" %>
+<div class="w-full max-w-4xl mx-auto py-16">
+  <div class="flex items-center justify-between mb-6">
+    <h1 class="text-2xl font-semibold">Connections</h1>
+    <div class="flex items-center gap-4">
+      <%= link_to "New connection", new_connection_path, class: "text-blue-600 hover:underline" %>
+      <%= link_to "Dashboard", root_path, class: "text-sm text-gray-500 hover:text-gray-700" %>
+    </div>
+  </div>
+
+  <% if @connections.empty? %>
+    <p class="text-gray-500">No connections yet.</p>
+  <% else %>
+    <table class="w-full text-sm">
+      <thead class="text-left text-gray-500 border-b">
+        <tr>
+          <th class="py-2 font-medium">Route</th>
+          <th class="py-2 font-medium">Status</th>
+          <th class="py-2 font-medium">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @connections.each do |connection| %>
+          <tr class="border-b hover:bg-gray-50">
+            <td class="py-2"><%= connection.source.name %> <span class="text-gray-400">→</span> <%= connection.destination.name %></td>
+            <td class="py-2">
+              <% if connection.active? %>
+                <span class="text-green-700">active</span>
+              <% else %>
+                <span class="text-gray-400">inactive</span>
+              <% end %>
+            </td>
+            <td class="py-2">
+              <%= button_to (connection.active? ? "Deactivate" : "Activate"), toggle_connection_path(connection), method: :patch,
+                    class: "text-blue-600 hover:underline text-sm", form: { class: "inline" } %>
+              <%= button_to "Delete", connection_path(connection), method: :delete,
+                    class: "text-red-600 hover:underline text-sm", form: { class: "inline" },
+                    data: { turbo_confirm: "Delete this connection? This also deletes its delivery attempts." } %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  <% end %>
+</div>

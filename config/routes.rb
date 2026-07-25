@@ -16,6 +16,17 @@ Rails.application.routes.draw do
     resources :retries, only: :create
   end
 
+  # Route management: sources, destinations, and the connections that wire them.
+  resources :sources do
+    member { patch :rotate_token }
+  end
+  resources :destinations do
+    member { patch :rotate_secret }
+  end
+  resources :connections, only: %i[index new create destroy] do
+    member { patch :toggle }
+  end
+
   # Authenticated landing page
   root "dashboard#show"
 end

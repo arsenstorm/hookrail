@@ -5,9 +5,12 @@
     &middot; org <%= Current.organization&.name %>
     &middot; project <%= Current.project&.name %>
   </p>
-  <p class="mb-8">
+  <nav class="mb-8 flex flex-col gap-1">
     <%= link_to "View events →", events_path, class: "text-blue-600 hover:underline" %>
-  </p>
+    <%= link_to "Sources →", sources_path, class: "text-blue-600 hover:underline" %>
+    <%= link_to "Destinations →", destinations_path, class: "text-blue-600 hover:underline" %>
+    <%= link_to "Connections →", connections_path, class: "text-blue-600 hover:underline" %>
+  </nav>
   <%= button_to "Sign out", logout_path, method: :delete,
         class: "rounded-md border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50" %>
 </div>
