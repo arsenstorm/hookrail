@@ -42,6 +42,9 @@ Rails.application.routes.draw do
     post :test
   end
 
+  # Aggregate delivery health over a selectable window.
+  get "metrics", to: "metrics#show", as: :metrics
+
   namespace :api do
     namespace :v1 do
       resources :sources, :destinations, only: %i[index show create update destroy]

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_25_210000) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_25_220000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -98,6 +98,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_25_210000) do
     t.index ["source_id", "dedupe_key", "received_at"], name: "index_events_on_dedupe_lookup", where: "(dedupe_key IS NOT NULL)"
     t.index ["source_id", "received_at"], name: "index_events_on_source_id_and_received_at"
     t.index ["source_id"], name: "index_events_on_source_id"
+  end
+
+  create_table "metric_rollups", force: :cascade do |t|
+    t.bigint "connection_id"
+    t.datetime "created_at", null: false
+    t.date "day", null: false
+    t.integer "delivered_count", default: 0, null: false
+    t.integer "events_received", default: 0, null: false
+    t.integer "failed_count", default: 0, null: false
+    t.integer "pending_count", default: 0, null: false
+    t.bigint "project_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["project_id", "day", "connection_id"], name: "idx_metric_rollups_connection_day", unique: true, where: "(connection_id IS NOT NULL)"
+    t.index ["project_id", "day"], name: "idx_metric_rollups_project_day", unique: true, where: "(connection_id IS NULL)"
   end
 
   create_table "organizations", force: :cascade do |t|

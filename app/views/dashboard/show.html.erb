@@ -8,6 +8,7 @@
   <%= render "shared/unhealthy_banner" %>
 
   <nav class="mb-8 flex flex-col gap-1">
+    <%= link_to "Metrics →", metrics_path, class: "text-blue-600 hover:underline" %>
     <%= link_to "View events →", events_path, class: "text-blue-600 hover:underline" %>
     <%= link_to "Sources →", sources_path, class: "text-blue-600 hover:underline" %>
     <%= link_to "Destinations →", destinations_path, class: "text-blue-600 hover:underline" %>

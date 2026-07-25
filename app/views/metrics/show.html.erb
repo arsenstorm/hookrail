@@ -1,0 +1,146 @@
+<% content_for :title, "Metrics" %>
+<%
+  buckets = @metrics.buckets
+  labels = buckets.map { |b| b[:label] }
+  events_series = [ { name: "Events", color: "#2563eb", values: buckets.map { |b| b[:events] } } ]
+  delivery_series = [
+    { name: "Delivered", color: "#16a34a", values: buckets.map { |b| b[:delivered] } },
+    { name: "Failed",    color: "#dc2626", values: buckets.map { |b| b[:failed] } },
+    { name: "Pending",   color: "#9ca3af", values: buckets.map { |b| b[:pending] } }
+  ]
+  rate = ->(value) { value.nil? ? "—" : "#{number_with_precision(value, precision: 1)}%" }
+  sort_link = ->(label, key) do
+    active = @sort == key
+    link_to metrics_path(window: @metrics.window, sort: key),
+            class: active ? "text-gray-900 hover:underline" : "text-gray-500 hover:text-gray-700" do
+      safe_join([ label, active ? " ↓" : "" ])
+    end
+  end
+%>
+<div class="w-full max-w-4xl mx-auto py-16">
+  <div class="flex items-center justify-between mb-6">
+    <h1 class="text-2xl font-semibold">Metrics</h1>
+    <%= link_to "Dashboard", root_path, class: "text-sm text-gray-500 hover:text-gray-700" %>
+  </div>
+
+  <nav class="flex gap-1 mb-6">
+    <% { "24h" => "Last 24 hours", "7d" => "Last 7 days", "30d" => "Last 30 days" }.each do |w, title| %>
+      <% active = @metrics.window == w %>
+      <%= link_to w, metrics_path(window: w, sort: @sort),
+            title: title,
+            "aria-current": (active ? "page" : nil),
+            class: "rounded-md px-3 py-1.5 text-sm #{active ? "bg-gray-900 text-white" : "border border-gray-300 text-gray-600 hover:bg-gray-50"}" %>
+    <% end %>
+  </nav>
+
+  <% totals = @metrics.totals %>
+  <dl class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
+    <% [ [ "Events received", number_with_delimiter(totals[:events_received]) ],
+         [ "Success rate", rate.(totals[:success_rate]) ],
+         [ "Failed", number_with_delimiter(totals[:failed]) ],
+         [ "Pending", number_with_delimiter(totals[:pending]) ] ].each do |label, value| %>
+      <div class="rounded-md border border-gray-300 px-3 py-2">
+        <dt class="text-xs text-gray-500"><%= label %></dt>
+        <dd class="text-xl font-semibold tabular-nums"><%= value %></dd>
+      </div>
+    <% end %>
+  </dl>
+
+  <section class="mb-8">
+    <h2 class="text-sm font-semibold text-gray-500 uppercase mb-2">Events received</h2>
+    <canvas class="w-full h-40 block"
+            data-controller="dither-chart"
+            data-dither-chart-type-value="area"
+            data-dither-chart-labels-value="<%= labels.to_json %>"
+            data-dither-chart-series-value="<%= events_series.to_json %>"></canvas>
+    <div class="flex justify-between text-xs text-gray-500 mt-1">
+      <span><%= labels.first %></span>
+      <span><%= labels.last %></span>
+    </div>
+  </section>
+
+  <section class="mb-8">
+    <div class="flex items-baseline justify-between mb-2">
+      <h2 class="text-sm font-semibold text-gray-500 uppercase">Deliveries</h2>
+      <ul class="flex gap-3 text-xs text-gray-500">
+        <% delivery_series.each do |s| %>
+          <li class="flex items-center gap-1">
+            <span class="inline-block w-2 h-2 rounded-sm" style="background-color: <%= s[:color] %>"></span>
+            <%= s[:name] %>
+          </li>
+        <% end %>
+      </ul>
+    </div>
+    <canvas class="w-full h-40 block"
+            data-controller="dither-chart"
+            data-dither-chart-type-value="bars"
+            data-dither-chart-labels-value="<%= labels.to_json %>"
+            data-dither-chart-series-value="<%= delivery_series.to_json %>"></canvas>
+    <div class="flex justify-between text-xs text-gray-500 mt-1">
+      <span><%= labels.first %></span>
+      <span><%= labels.last %></span>
+    </div>
+  </section>
+
+  <section class="mb-8">
+    <h2 class="text-sm font-semibold text-gray-500 uppercase mb-2">Connections</h2>
+    <table class="w-full text-sm">
+      <thead class="text-left text-gray-500 border-b">
+        <tr>
+          <th class="py-2 font-medium">Connection</th>
+          <th class="py-2 font-medium text-right"><%= sort_link.("Events", "events") %></th>
+          <th class="py-2 font-medium text-right">Delivered</th>
+          <th class="py-2 font-medium text-right"><%= sort_link.("Failed", "failed") %></th>
+          <th class="py-2 font-medium text-right">Pending</th>
+          <th class="py-2 font-medium text-right"><%= sort_link.("Success rate", "success") %></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if @connection_rows.empty? %>
+          <tr><td colspan="6" class="py-3 text-gray-500">No deliveries in this window.</td></tr>
+        <% else %>
+          <% @connection_rows.each do |row| %>
+            <tr class="border-b hover:bg-gray-50">
+              <td class="py-2"><%= row[:connection].source.name %> → <%= row[:connection].destination.name %></td>
+              <td class="py-2 text-right tabular-nums"><%= row[:events] %></td>
+              <td class="py-2 text-right tabular-nums"><%= row[:delivered] %></td>
+              <td class="py-2 text-right tabular-nums <%= "text-red-600" if row[:failed].positive? %>"><%= row[:failed] %></td>
+              <td class="py-2 text-right tabular-nums"><%= row[:pending] %></td>
+              <td class="py-2 text-right tabular-nums"><%= rate.(row[:success_rate]) %></td>
+            </tr>
+          <% end %>
+        <% end %>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2 class="text-sm font-semibold text-gray-500 uppercase mb-2">Latency by destination</h2>
+    <table class="w-full text-sm">
+      <thead class="text-left text-gray-500 border-b">
+        <tr>
+          <th class="py-2 font-medium">Destination</th>
+          <th class="py-2 font-medium text-right">Attempts</th>
+          <th class="py-2 font-medium text-right">p50 (ms)</th>
+          <th class="py-2 font-medium text-right">p95 (ms)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% rows = @metrics.latency_by_destination %>
+        <% if rows.empty? %>
+          <tr><td colspan="4" class="py-3 text-gray-500">No timed attempts in this window.</td></tr>
+        <% else %>
+          <% rows.each do |row| %>
+            <tr class="border-b hover:bg-gray-50">
+              <td class="py-2"><%= row[:destination].name %></td>
+              <td class="py-2 text-right tabular-nums"><%= row[:count] %></td>
+              <td class="py-2 text-right tabular-nums"><%= row[:p50] %></td>
+              <td class="py-2 text-right tabular-nums"><%= row[:p95] %></td>
+            </tr>
+          <% end %>
+        <% end %>
+      </tbody>
+    </table>
+    <p class="text-xs text-gray-500 mt-1">Attempts without a recorded latency are excluded.</p>
+  </section>
+</div>

@@ -257,3 +257,25 @@ still not answering with a 2xx, the alert is dropped with a log line. A failing 
 an alert of its own, never counts against connection health, and never blocks or slows event delivery — there
 is no recursion here by design. Use *Send test alert* to fire a sample `test` payload through the same path
 and confirm the receiver accepts it.
+
+## Metrics
+
+`/metrics` aggregates delivery health for the current project over the last **24 hours**, **7 days**, or
+**30 days**. The 24h window buckets by hour, the others by day.
+
+Four headline numbers sit above the charts. A *delivery* is one event on one connection, and its state is the
+latest attempt for that pair:
+
+| Number | Meaning |
+| --- | --- |
+| Events received | Events ingested in the window. |
+| Success rate | Delivered ÷ (delivered + failed). Completed deliveries only — pending ones never drag it down. `—` when nothing has completed. |
+| Failed | Deliveries whose latest attempt failed, including those that exhausted their retries and went dead. |
+| Pending | Deliveries still in flight, queued, or held. |
+
+Below the charts, a per-connection breakdown sorts worst-offender-first — by failures (the default), by volume,
+or by success rate — and a per-destination latency table gives p50 and p95, measured per attempt. Attempts
+recorded before latency capture existed are excluded rather than counted as zero.
+
+Complete past days are read from daily rollups, so window totals stay correct after old raw events are pruned.
+Latency percentiles come from raw attempts only, so they cover at most the retention period.
