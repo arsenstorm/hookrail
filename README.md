@@ -134,6 +134,20 @@ The policy governs every kind of failure — HTTP errors and transformation erro
 retries and replays exactly as it does to first deliveries. Exhausting it marks the delivery dead, the same as
 running out the default schedule. Clear the three fields to go back to the default.
 
+## Delivery rate limits
+
+Each destination can cap how fast deliveries go out to it — 1 to 100 per second, or 1 to 6000 per minute — set
+on the destination's form at *Destinations → Edit*. Leave the field blank and the destination is unlimited.
+
+Deliveries over the cap are not dropped: they queue and go out as slots free up in the next window. Pacing
+works in fixed one-second (or one-minute) windows.
+
+A delivery queued by the rate limit is not a failure. It does not count against connection health, fires no
+alerts, and consumes no retry attempts.
+
+The cap is shared by everything aimed at that destination — every connection wired to it, plus automatic
+retries, manual retries and replays.
+
 ## Payload transformations
 
 Each connection can carry a JavaScript `transform(request)` function that reshapes the request before it is

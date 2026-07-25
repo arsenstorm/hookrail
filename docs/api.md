@@ -94,7 +94,14 @@ Where events are forwarded.
 | DELETE | `/api/v1/destinations/:id` | `204` |
 
 Writable params under `destination`: `name` (required), `url` (required), `headers` — a JSON object of extra
-request headers sent with each delivery. It replaces the stored object wholesale; there is no merge.
+request headers sent with each delivery. It replaces the stored object wholesale; there is no merge. Also
+`rate_limit` (integer) with `rate_limit_period` (`"second"` or `"minute"`, defaulting to `"second"` when a
+limit is set without one) — a cap on how fast deliveries go out. Bounds are 1–100 per second and 1–6000 per
+minute; anything outside them is `422` `validation_failed`. Sending `rate_limit` as `null` clears the limit,
+and the period with it.
+
+Deliveries beyond the cap queue for the next window: they are never dropped and never count as failures. The
+budget is shared across all of the destination's connections, retries and replays.
 
 The destination's `signing_secret` (used to HMAC outbound payloads) is not returned.
 
@@ -111,6 +118,8 @@ curl -X POST https://hookrail.dev/api/v1/destinations \
     "id": 84,
     "name": "Billing worker",
     "url": "https://billing.internal/hooks",
+    "rate_limit": null,
+    "rate_limit_period": null,
     "headers": {"X-Env": "prod"},
     "created_at": "2026-07-25T15:07:29.623Z",
     "updated_at": "2026-07-25T15:07:29.623Z"

@@ -33,11 +33,11 @@ module Api
       def scope = Current.project.destinations
 
       def destination_params
-        params.require(:destination).permit(:name, :url, headers: {})
+        params.require(:destination).permit(:name, :url, :rate_limit, :rate_limit_period, headers: {})
       end
 
       def destination_json(destination)
-        destination.as_json(only: %i[id name url headers created_at updated_at])
+        destination.as_json(only: %i[id name url rate_limit rate_limit_period headers created_at updated_at])
       end
     end
   end

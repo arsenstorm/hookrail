@@ -23,6 +23,14 @@ class DeliverEventJob < ApplicationJob
       return
     end
 
+    wait = connection.destination.claim_delivery_slot!
+    if wait.positive?
+      # Rate-limited, not failed: requeue untouched — no attempt row, no
+      # counters, no retry budget consumed.
+      self.class.set(wait: wait).perform_later(event_id, connection_id, replay: replay, retry_count: retry_count)
+      return
+    end
+
     attempt = claim_or_build_attempt(event, connection, replay)
 
     transformed = nil

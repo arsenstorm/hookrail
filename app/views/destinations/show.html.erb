@@ -8,6 +8,8 @@
   <dl class="text-sm grid grid-cols-[8rem_1fr] gap-y-1">
     <dt class="text-gray-500">Name</dt><dd><%= @destination.name %></dd>
     <dt class="text-gray-500">URL</dt><dd><%= @destination.url %></dd>
+    <dt class="text-gray-500">Rate limit</dt>
+    <dd><%= @destination.rate_limited? ? "#{@destination.rate_limit} per #{@destination.rate_limit_period}" : "Unlimited" %></dd>
     <dt class="text-gray-500">Created</dt><dd><%= @destination.created_at.strftime("%Y-%m-%d %H:%M:%S") %></dd>
   </dl>
 
