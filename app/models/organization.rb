@@ -8,6 +8,8 @@ class Organization < ApplicationRecord
   validates :alert_webhook_url, format: { with: %r{\Ahttps?://\S+\z}i, message: "must be an http(s) URL" },
             allow_blank: true
 
+  validates :retention_days, inclusion: { in: [ 7, 30, 90 ], message: "must be 7, 30, or 90 days" }
+
   # The secret lives and dies with the URL: generated when a URL is first set,
   # cleared when it is removed, kept across URL edits so receivers don't break.
   before_validation do

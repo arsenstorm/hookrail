@@ -42,6 +42,9 @@ Rails.application.routes.draw do
     post :test
   end
 
+  # Org-level data retention window, mirrored by the JSON API.
+  resource :retention, only: %i[show update]
+
   # Aggregate delivery health over a selectable window.
   get "metrics", to: "metrics#show", as: :metrics
 
@@ -52,6 +55,7 @@ Rails.application.routes.draw do
         member { post :transformation_preview, to: "transformation_previews#create" }
       end
       resource :alert_webhook, only: %i[show update destroy]
+      resource :retention, only: %i[show update]
       resources :events, only: %i[index show] do
         resources :attempts, only: :index
         resources :retries, only: :create

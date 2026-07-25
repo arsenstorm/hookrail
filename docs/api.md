@@ -488,3 +488,36 @@ Two headers sign the request, the same pair and construction as outbound event d
 
 Delivery is asynchronous with three bounded attempts; after that the alert is dropped with a log line. Alert
 delivery never generates alerts of its own and never affects event deliveries.
+
+## Retention
+
+An org-scoped singleton: how long raw traffic is kept before it is deleted.
+
+| Method | Path | Result |
+| --- | --- | --- |
+| GET | `/api/v1/retention` | `200` `{"retention": {"days": 30}}` |
+| PATCH/PUT | `/api/v1/retention` | `200` `{"retention": {"days": ...}}` with the new window |
+
+Writable param under `retention`: `days`, which must be `7`, `30`, or `90` — anything else is `422`
+`validation_failed`, and the stored window is left as it was. New orgs default to `30`.
+
+The window applies to the whole org. Each night, events, delivery attempts, and quarantined webhooks older
+than it are hard-deleted; an event with a delivery still in flight is skipped until that delivery reaches a
+terminal state. Deletion is permanent and there is no export. Metrics daily rollups survive pruning, so
+`/metrics` history outlives the raw payloads, and configuration — sources, destinations, connections, API
+keys, and settings — is never deleted.
+
+```sh
+curl -X PUT https://hookrail.dev/api/v1/retention \
+  -H "Authorization: Bearer $HOOKRAIL_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"retention":{"days":90}}'
+```
+
+```json
+{
+  "retention": {
+    "days": 90
+  }
+}
+```

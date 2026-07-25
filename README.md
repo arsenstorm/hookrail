@@ -279,3 +279,14 @@ recorded before latency capture existed are excluded rather than counted as zero
 
 Complete past days are read from daily rollups, so window totals stay correct after old raw events are pruned.
 Latency percentiles come from raw attempts only, so they cover at most the retention period.
+
+## Data retention
+
+One retention window covers the whole org: **7**, **30** (the default), or **90** days, set on the *Data
+retention* page or through `PATCH /api/v1/retention`. Every night, events, delivery attempts, and quarantined
+webhooks older than the window are hard-deleted. Deletion is permanent — there is no export and no undo.
+
+An event with a delivery still in flight is left alone until that delivery reaches a terminal state, so a
+retry in progress is never pruned out from under itself. Metrics daily rollups survive pruning, which is why
+`/metrics` totals stay correct once the raw events behind them are gone, and configuration — sources,
+destinations, connections, API keys, and settings — is never touched.
