@@ -61,7 +61,7 @@ class RetryFlowTest < ActionDispatch::IntegrationTest
     add_attempt!(event, connection, status: :dead, number: 6)
     stub = stub_request(:post, destination.url).to_return(status: 200, body: "ok")
 
-    assert_enqueued_with(job: DeliverEventJob, args: [ event.id, connection.id ]) do
+    assert_enqueued_with(job: DeliverEventJob, args: [ event.id, connection.id, { replay: false } ]) do
       post event_retries_path(event), params: { connection_id: connection.id }
     end
     assert_redirected_to event_path(event)

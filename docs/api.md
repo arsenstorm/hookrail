@@ -227,6 +227,9 @@ Every delivery try for one event, ordered by connection then attempt number.
 
 Statuses: `pending`, `delivering`, `succeeded`, `failed`, `dead`. `dead` means retries are exhausted.
 
+`replay` is `true` when the attempt came from a [bulk replay](#bulk-replay) — those requests also carry the
+`X-Hookrail-Replay: true` header. Normal deliveries and retries report `false`.
+
 ```sh
 curl https://hookrail.dev/api/v1/events/4021/attempts -H "Authorization: Bearer $HOOKRAIL_KEY"
 ```
@@ -244,7 +247,8 @@ curl https://hookrail.dev/api/v1/events/4021/attempts -H "Authorization: Bearer 
       "response_body": "boom",
       "error": null,
       "duration_ms": 142,
-      "attempted_at": "2026-07-25T15:07:29.667Z"
+      "attempted_at": "2026-07-25T15:07:29.667Z",
+      "replay": false
     }
   ]
 }
@@ -290,6 +294,42 @@ curl -X POST https://hookrail.dev/api/v1/events/bulk_retry \
   -H "Authorization: Bearer $HOOKRAIL_KEY" \
   -H "Content-Type: application/json" \
   -d '{"source_id":12,"status":"failed"}'
+```
+
+```json
+{"enqueued": 2}
+```
+
+## Bulk replay
+
+`POST /api/v1/events/bulk_replay`
+
+Re-sends a filtered set of events to **one** connection you name — backfilling a destination that was down or
+newly added. Unlike bulk retry, replay does not care whether a delivery previously failed: an event that
+already delivered successfully is sent again.
+
+| Param | Meaning |
+| --- | --- |
+| `connection_id` | **Required.** A connection in your organization; anything else is `404`. |
+| `source_id`, `status`, `q`, `from`, `to` | Same filters as the events list, selecting the set to replay. `cursor` is ignored. |
+
+Returns `202` and the number of events enqueued. Two kinds of event are skipped and not counted:
+
+- **In flight** — the latest attempt on that (event, connection) pair is `pending` or `delivering`. Replaying would race a delivery already underway.
+- **Rule non-matches** — the connection's routing rule doesn't match the event. Replay respects rules exactly as live delivery does.
+
+So `enqueued` can be lower than the number of events your filters match. With no filters, the whole project's
+event history is replayed to that connection.
+
+Replayed deliveries carry the header `X-Hookrail-Replay: true` so the destination can distinguish them from
+first-time traffic and dedupe. The attempts they create are flagged with `"replay": true` in the attempt JSON
+(see [Attempts](#attempts)); normal deliveries and retries report `false`.
+
+```sh
+curl -X POST https://hookrail.dev/api/v1/events/bulk_replay \
+  -H "Authorization: Bearer $HOOKRAIL_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"connection_id":74,"source_id":12,"from":"2026-07-01"}'
 ```
 
 ```json

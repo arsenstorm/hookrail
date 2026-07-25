@@ -34,6 +34,9 @@
             <div class="flex items-center justify-between mb-1">
               <span class="font-medium"><%= attempt.connection.source.name %> → <%= attempt.connection.destination.name %></span>
               <div class="flex items-center gap-3">
+                <% if attempt.replay? %>
+                  <span class="rounded-full bg-indigo-100 text-indigo-800 px-2 py-0.5 text-xs">replay</span>
+                <% end %>
                 <span class="text-gray-500"><%= attempt.status %></span>
                 <% if @retryable_attempt_ids.include?(attempt.id) %>
                   <%= button_to "Retry", event_retries_path(@event), params: { connection_id: attempt.connection_id },

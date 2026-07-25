@@ -79,3 +79,20 @@ compared as strings.
 
 A body that is not a JSON object fails every body criterion — it never errors, it just doesn't match. Blank
 criteria are dropped, so clearing all four restores "receives everything".
+
+## Event replay
+
+Replay re-sends events you have already received to one connection you choose — for backfilling a destination
+that was down, misconfigured, or newly added. Filter the events list down to the set you want, pick a
+connection, and hit *Replay*; the whole filtered set is replayed, not just the visible page.
+
+Replayed deliveries carry `X-Hookrail-Replay: true` so the destination can tell them apart from first-time
+traffic and dedupe on its own. Unlike a retry, a replay re-sends even events that already delivered
+successfully — that is the point of it.
+
+Two things are skipped, and the notice counts only what was actually enqueued:
+
+- Events whose latest delivery on that connection is still in flight, so a replay can't race a delivery already underway.
+- Events the connection's routing rule doesn't match — replay respects rules exactly as live delivery does.
+
+The same operation is available over the API as `POST /api/v1/events/bulk_replay`.

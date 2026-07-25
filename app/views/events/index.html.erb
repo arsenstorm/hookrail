@@ -48,6 +48,26 @@
     </div>
   <% end %>
 
+  <%# Rarer, heavier action than retry: same row weight, quieter chrome, explicit target. %>
+  <% if @events.any? && @connections.any? %>
+    <%= form_with url: bulk_replay_events_path, class: "flex flex-wrap items-end gap-2 mb-6" do |f| %>
+      <% @filter_params.each do |name, value| %>
+        <%= hidden_field_tag name, value, id: nil %>
+      <% end %>
+      <div class="flex flex-col">
+        <label class="text-xs text-gray-500 mb-1">Replay filtered events to</label>
+        <%= f.select :connection_id,
+              options_for_select(@connections.map { |c| [ "#{c.source.name} → #{c.destination.name}", c.id ] }),
+              {},
+              class: "rounded-md border border-gray-300 px-2 py-1.5 text-sm" %>
+      </div>
+      <%= f.submit "Replay", name: nil,
+            class: "rounded-md border border-gray-300 text-gray-600 px-3 py-1.5 text-sm hover:bg-gray-50 cursor-pointer",
+            data: { turbo_confirm: "Replay #{pluralize(@filtered_count, "filtered event")} to the chosen connection? " \
+                                   "Events already in flight on it, and events its routing rule filters out, are skipped." } %>
+    <% end %>
+  <% end %>
+
   <% if @events.empty? %>
     <% if @filters_active %>
       <p class="text-gray-500">No events match these filters.

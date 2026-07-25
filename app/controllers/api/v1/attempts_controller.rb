@@ -10,7 +10,7 @@ module Api
 
       def attempt_json(attempt)
         attempt.as_json(only: %i[id event_id connection_id attempt_number status response_status
-                                  response_body error duration_ms attempted_at])
+                                  response_body error duration_ms attempted_at replay])
       end
     end
   end

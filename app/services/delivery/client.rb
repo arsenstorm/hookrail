@@ -11,13 +11,14 @@ module Delivery
     # to a fresh connection. Compared case-insensitively.
     SKIP_FORWARD_HEADERS = %w[host content-length connection transfer-encoding keep-alive].freeze
 
-    def self.deliver(event:, destination:)
-      new(event, destination).deliver
+    def self.deliver(event:, destination:, replay: false)
+      new(event, destination, replay).deliver
     end
 
-    def initialize(event, destination)
+    def initialize(event, destination, replay = false)
       @event = event
       @destination = destination
+      @replay = replay
     end
 
     def deliver
@@ -64,6 +65,7 @@ module Delivery
       timestamp = Time.current.to_i.to_s
       request["X-Hookrail-Timestamp"] = timestamp
       request["X-Hookrail-Signature"] = "sha256=#{signature(body, timestamp)}"
+      request["X-Hookrail-Replay"] = "true" if @replay
       request.body = body
       request
     end

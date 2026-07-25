@@ -16,6 +16,7 @@ Rails.application.routes.draw do
     resources :retries, only: :create
     collection do
       post :bulk_retry, to: "bulk_retries#create"
+      post :bulk_replay, to: "bulk_replays#create"
     end
   end
 
@@ -42,7 +43,10 @@ Rails.application.routes.draw do
       resources :events, only: %i[index show] do
         resources :attempts, only: :index
         resources :retries, only: :create
-        collection { post :bulk_retry, to: "bulk_retries#create" }
+        collection do
+          post :bulk_retry, to: "bulk_retries#create"
+          post :bulk_replay, to: "bulk_replays#create"
+        end
       end
     end
   end

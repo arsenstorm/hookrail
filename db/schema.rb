@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_25_161838) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_25_162743) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -34,6 +34,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_25_161838) do
     t.integer "duration_ms"
     t.text "error"
     t.bigint "event_id", null: false
+    t.boolean "replay", default: false, null: false
     t.text "response_body"
     t.integer "response_status"
     t.string "status", default: "pending", null: false
