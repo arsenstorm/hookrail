@@ -14,6 +14,9 @@ Rails.application.routes.draw do
   # Read-only event inspection + manual delivery retry
   resources :events, only: %i[index show] do
     resources :retries, only: :create
+    collection do
+      post :bulk_retry, to: "bulk_retries#create"
+    end
   end
 
   # Webhooks rejected by inbound signature verification

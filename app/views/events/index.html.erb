@@ -40,6 +40,14 @@
     <% end %>
   <% end %>
 
+  <% if @retryable_count > 0 %>
+    <div class="mb-6">
+      <%= button_to "Retry #{pluralize(@retryable_count, "failed delivery")}", bulk_retry_events_path(@filter_params), method: :post,
+            class: "rounded-md border border-red-300 text-red-700 px-3 py-1.5 text-sm hover:bg-red-50 cursor-pointer",
+            data: { turbo_confirm: "Retry #{pluralize(@retryable_count, "failed delivery")} matching the current filters?" } %>
+    </div>
+  <% end %>
+
   <% if @events.empty? %>
     <% if @filters_active %>
       <p class="text-gray-500">No events match these filters.
