@@ -11,8 +11,10 @@ Rails.application.routes.draw do
   get    "/auth/:provider/callback", to: "sessions#create"
   get    "/auth/failure",            to: "sessions#failure"
 
-  # Read-only event inspection
-  resources :events, only: %i[index show]
+  # Read-only event inspection + manual delivery retry
+  resources :events, only: %i[index show] do
+    resources :retries, only: :create
+  end
 
   # Authenticated landing page
   root "dashboard#show"

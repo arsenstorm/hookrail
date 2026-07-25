@@ -15,16 +15,13 @@ class DeliverEventJob < ApplicationJob
   end
 
   def perform(event_id, connection_id)
+    # Idempotency (Slice 5 R4): once any delivery for this pair has succeeded, never send
+    # again. Covers a manual retry racing the still-scheduled automatic retry.
+    return if Attempt.where(event_id: event_id, connection_id: connection_id).succeeded.exists?
+
     event = Event.find(event_id)
     connection = Connection.find(connection_id)
-
-    attempt = Attempt.create!(
-      event: event,
-      connection: connection,
-      attempt_number: executions,
-      status: :delivering,
-      attempted_at: Time.current
-    )
+    attempt = claim_or_build_attempt(event, connection)
 
     result = Delivery::Client.deliver(event: event, destination: connection.destination)
 
@@ -45,5 +42,30 @@ class DeliverEventJob < ApplicationJob
       )
       raise DeliveryError
     end
+  end
+
+  private
+
+  # A manual retry pre-creates a :pending attempt to claim the delivery slot (Slice 5 R5).
+  # Consume it if present; automatic deliveries (ingest, retry_on) have none -> build fresh.
+  # ponytail: an orphaned :pending (claim created after a concurrent success) is left as-is;
+  # harmless at dogfood scale, revisit if stuck-pending rows appear.
+  def claim_or_build_attempt(event, connection)
+    pending = Attempt.where(event: event, connection: connection, status: :pending)
+                     .order(:attempt_number).last
+    if pending
+      pending.update!(status: :delivering, attempted_at: Time.current)
+      pending
+    else
+      Attempt.create!(
+        event: event, connection: connection,
+        attempt_number: next_attempt_number(event, connection),
+        status: :delivering, attempted_at: Time.current
+      )
+    end
+  end
+
+  def next_attempt_number(event, connection)
+    Attempt.where(event: event, connection: connection).maximum(:attempt_number).to_i + 1
   end
 end
