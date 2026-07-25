@@ -35,7 +35,7 @@ class EventsController < ApplicationController
       .group_by(&:connection_id)
       .values
       .map { |attempts| attempts.max_by(&:attempt_number) }
-      .select { |latest| latest.dead? || latest.failed? }
+      .select { |latest| (latest.dead? || latest.failed?) && latest.connection.status_active? }
       .map(&:id)
       .to_set
   end

@@ -95,7 +95,30 @@ Two things are skipped, and the notice counts only what was actually enqueued:
 - Events whose latest delivery on that connection is still in flight, so a replay can't race a delivery already underway.
 - Events the connection's routing rule doesn't match — replay respects rules exactly as live delivery does.
 
+Replay targets must be active connections — a paused or disabled connection refuses the whole replay.
+
 The same operation is available over the API as `POST /api/v1/events/bulk_replay`.
+
+## Pausing and disabling connections
+
+Every connection is *active*, *paused*, or *disabled*. The buttons on the Connections page move it between
+states, and the API exposes the same thing as the connection's `status`.
+
+| State | Events | Deliveries |
+| --- | --- | --- |
+| Active | Received and stored | Attempted normally |
+| Paused | Received and stored | Held, never sent |
+| Disabled | Still ingested, visible on the source | Not created at all |
+
+While a connection is paused, matched events still arrive and are stored, but their deliveries are held rather
+than attempted: nothing is sent, nothing fails, no alerts fire. Resuming releases the held deliveries in the
+order the events arrived.
+
+While a connection is disabled, events keep being ingested and stay visible on the source, but no deliveries
+are created, and anything already held or pending is cancelled. Re-enabling does not back-deliver what arrived
+in the meantime — replay exists for that.
+
+Replay and manual retry are refused while a connection is not active.
 
 ## Payload transformations
 

@@ -31,7 +31,7 @@ Rails.application.routes.draw do
     member { patch :rotate_secret }
   end
   resources :connections, only: %i[index new create edit update destroy] do
-    member { patch :toggle }
+    member { patch :status, to: "connections#update_status" }
   end
 
   # Org-scoped API keys managed in the UI; the JSON API below authenticates with them.

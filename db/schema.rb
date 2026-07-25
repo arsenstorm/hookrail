@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_25_171019) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_25_175250) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -54,6 +54,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_25_171019) do
     t.bigint "project_id", null: false
     t.jsonb "routing_rule", default: {}, null: false
     t.bigint "source_id", null: false
+    t.string "status", default: "active", null: false
     t.text "transformation"
     t.datetime "unhealthy_since"
     t.datetime "updated_at", null: false
@@ -61,6 +62,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_25_171019) do
     t.index ["project_id"], name: "index_connections_on_project_id"
     t.index ["source_id", "active"], name: "index_connections_on_source_id_and_active"
     t.index ["source_id", "destination_id"], name: "index_connections_on_source_id_and_destination_id", unique: true
+    t.index ["source_id", "status"], name: "index_connections_on_source_id_and_status"
     t.index ["source_id"], name: "index_connections_on_source_id"
   end
 

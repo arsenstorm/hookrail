@@ -6,7 +6,8 @@ class Event < ApplicationRecord
   DELIVERY_STATUSES = %w[delivered failed partial pending undelivered].freeze
 
   # Attempt statuses that mean "still in flight" — no terminal outcome yet.
-  IN_FLIGHT_STATUSES = %w[pending delivering].freeze
+  # held means the connection is paused; no terminal outcome yet.
+  IN_FLIGHT_STATUSES = %w[pending delivering held].freeze
 
   # Filter events by their rolled-up delivery status. Buckets are mutually
   # exclusive; precedence: undelivered -> pending (any in-flight attempt) ->

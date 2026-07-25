@@ -1,4 +1,10 @@
 class ConnectionsController < ApplicationController
+  STATUS_NOTICES = {
+    "active" => "Connection resumed.",
+    "paused" => "Connection paused.",
+    "disabled" => "Connection disabled."
+  }.freeze
+
   def index
     @connections = Current.project.connections.includes(:source, :destination).order(created_at: :desc)
     @unhealthy_connections = Current.project.connections.unhealthy.includes(:source, :destination)
@@ -38,11 +44,13 @@ class ConnectionsController < ApplicationController
     end
   end
 
-  def toggle
+  def update_status
     @connection = Current.project.connections.find(params[:id])
-    @connection.update!(active: !@connection.active)
-    redirect_to connections_path,
-      notice: (@connection.active ? "Connection activated." : "Connection deactivated.")
+    status = params.require(:status)
+    return redirect_to connections_path, alert: "Unknown status." unless Connection.statuses.key?(status)
+
+    @connection.update!(status: status)
+    redirect_to connections_path, notice: STATUS_NOTICES.fetch(status)
   end
 
   def destroy

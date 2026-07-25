@@ -4,6 +4,7 @@ class Attempt < ApplicationRecord
 
   enum :status, {
     pending: "pending",
+    held: "held",
     delivering: "delivering",
     succeeded: "succeeded",
     failed: "failed",
@@ -11,12 +12,14 @@ class Attempt < ApplicationRecord
   }
 
   # The retryable deliveries among `events`: the latest attempt per
-  # (event, connection) pair, where that attempt ended failed or dead.
+  # (event, connection) pair that ended failed or dead, on a connection that
+  # is currently active — paused/disabled connections don't retry.
   def self.retryable_for(events)
     latest = where(event_id: events.select(:id))
                .select("DISTINCT ON (attempts.event_id, attempts.connection_id) attempts.*")
                .order(:event_id, :connection_id, attempt_number: :desc)
     from(latest, :attempts).where(status: %w[failed dead])
+      .joins(:connection).where(connections: { status: "active" })
   end
 
   # Claim the pair's retry slot by appending a :pending attempt — the unique

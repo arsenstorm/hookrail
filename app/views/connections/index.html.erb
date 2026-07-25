@@ -31,10 +31,12 @@
               <% end %>
             </td>
             <td class="py-2">
-              <% if connection.active? %>
+              <% if connection.status_active? %>
                 <span class="text-green-700">active</span>
+              <% elsif connection.status_paused? %>
+                <span class="rounded-full bg-amber-100 text-amber-800 px-2 py-0.5 text-xs">paused</span>
               <% else %>
-                <span class="text-gray-400">inactive</span>
+                <span class="text-gray-400">disabled</span>
               <% end %>
               <% if connection.unhealthy? %>
                 <div class="mt-1 flex items-center gap-1.5">
@@ -45,8 +47,21 @@
             </td>
             <td class="py-2">
               <%= link_to "Edit", edit_connection_path(connection), class: "text-blue-600 hover:underline text-sm" %>
-              <%= button_to (connection.active? ? "Deactivate" : "Activate"), toggle_connection_path(connection), method: :patch,
-                    class: "text-blue-600 hover:underline text-sm", form: { class: "inline" } %>
+              <% if connection.status_active? %>
+                <%= button_to "Pause", status_connection_path(connection), method: :patch, params: { status: "paused" },
+                      class: "text-blue-600 hover:underline text-sm", form: { class: "inline" } %>
+              <% elsif connection.status_paused? %>
+                <%= button_to "Resume", status_connection_path(connection), method: :patch, params: { status: "active" },
+                      class: "text-blue-600 hover:underline text-sm", form: { class: "inline" } %>
+              <% end %>
+              <% if connection.status_disabled? %>
+                <%= button_to "Enable", status_connection_path(connection), method: :patch, params: { status: "active" },
+                      class: "text-blue-600 hover:underline text-sm", form: { class: "inline" } %>
+              <% else %>
+                <%= button_to "Disable", status_connection_path(connection), method: :patch, params: { status: "disabled" },
+                      class: "text-blue-600 hover:underline text-sm", form: { class: "inline" },
+                      data: { turbo_confirm: "Disable this connection? Held and pending deliveries are cancelled." } %>
+              <% end %>
               <%= button_to "Delete", connection_path(connection), method: :delete,
                     class: "text-red-600 hover:underline text-sm", form: { class: "inline" },
                     data: { turbo_confirm: "Delete this connection? This also deletes its delivery attempts." } %>

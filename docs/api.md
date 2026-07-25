@@ -32,6 +32,7 @@ exist: `404`. Nothing about them is leaked.
 | 404 | `not_found` | Unknown id, or an id owned by another organization. |
 | 422 | `validation_failed` | Write rejected; `message` is the model's error sentence. |
 | 422 | `not_retryable` | The delivery's latest attempt is not `failed` or `dead`. |
+| 422 | `connection_not_active` | The target connection is paused or disabled. |
 | 422 | `transformation_failed` | Preview code threw, timed out, or returned a non-object. |
 
 Write bodies are wrapped in the resource name (`{"source": {...}}`). A JSON body without the wrapper is
@@ -130,10 +131,17 @@ connection of that source.
 | PATCH/PUT | `/api/v1/connections/:id` | `200` `{"connection": {...}}` |
 | DELETE | `/api/v1/connections/:id` | `204` — also deletes its attempts |
 
-Writable params under `connection`: `source_id`, `destination_id`, `active` (default `true`), and
+Writable params under `connection`: `source_id`, `destination_id`, `status` (default `"active"`), and
 `transformation` — a nullable string of JavaScript defining `function transform(request)`, run against every
 delivery on this connection (see the README). Code that doesn't parse, or that never defines `transform`, is
 rejected with `422 validation_failed`; `null` removes the transform.
+
+`status` is one of `"active"`, `"paused"`, or `"disabled"`; any other value is `422 validation_failed`. A
+paused connection still stores matched events but holds their deliveries instead of attempting them, and
+releases the held ones in the order the events arrived when you set it back to `"active"`. A disabled
+connection creates no deliveries at all and cancels anything already held or pending; re-enabling does not
+back-deliver what arrived while it was disabled — use [bulk replay](#bulk-replay) for that. Replay and retry
+are refused while a connection is not `"active"`.
 
 A `source_id` or `destination_id` from another organization is rejected with `422 validation_failed`
 (`"Source must exist"`), not `404` — the id is resolved through your own project before assignment, so it
@@ -155,7 +163,7 @@ curl -X POST https://hookrail.dev/api/v1/connections \
     "id": 74,
     "source_id": 12,
     "destination_id": 84,
-    "active": true,
+    "status": "active",
     "transformation": null,
     "consecutive_failures": 0,
     "unhealthy_since": null,
@@ -311,7 +319,8 @@ curl https://hookrail.dev/api/v1/events/4021/attempts -H "Authorization: Bearer 
 | `connection_id` | Required. Must be a connection of that event's source, else `404`. |
 
 Retryable means the latest attempt on that (event, connection) pair ended `failed` or `dead`. Anything else —
-succeeded, still in flight, or never attempted — is `422 not_retryable`. Success is `202`: the delivery is
+succeeded, still in flight, or never attempted — is `422 not_retryable`. A connection that is paused or
+disabled is `422 connection_not_active`, checked before retryability. Success is `202`: the delivery is
 enqueued, not performed inline.
 
 ```sh
@@ -358,7 +367,7 @@ already delivered successfully is sent again.
 
 | Param | Meaning |
 | --- | --- |
-| `connection_id` | **Required.** A connection in your organization; anything else is `404`. |
+| `connection_id` | **Required.** A connection in your organization; anything else is `404`. Must be active — paused or disabled is `422 connection_not_active` and nothing is replayed. |
 | `source_id`, `status`, `q`, `from`, `to` | Same filters as the events list, selecting the set to replay. `cursor` is ignored. |
 
 Returns `202` and the number of events enqueued. Two kinds of event are skipped and not counted:

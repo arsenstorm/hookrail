@@ -49,15 +49,26 @@ class ConnectionsManagementTest < ActionDispatch::IntegrationTest
     assert_match "already connected", response.body
   end
 
-  test "toggle flips active" do
+  test "status action moves a connection through its states" do
     sign_in!
     s, d = pair!(current_project)
-    c = current_project.connections.create!(source: s, destination: d, active: true)
-    patch toggle_connection_path(c)
+    c = current_project.connections.create!(source: s, destination: d)
+
+    patch status_connection_path(c, status: "paused")
     assert_redirected_to connections_path
-    assert_equal false, c.reload.active
-    patch toggle_connection_path(c)
-    assert_equal true, c.reload.active
+    assert_equal "paused", c.reload.status
+
+    patch status_connection_path(c, status: "active")
+    assert_redirected_to connections_path
+    assert_equal "active", c.reload.status
+
+    patch status_connection_path(c, status: "disabled")
+    assert_redirected_to connections_path
+    assert_equal "disabled", c.reload.status
+
+    patch status_connection_path(c, status: "bogus")
+    assert_redirected_to connections_path
+    assert_equal "disabled", c.reload.status
   end
 
   test "deleting a connection removes it" do
@@ -75,7 +86,7 @@ class ConnectionsManagementTest < ActionDispatch::IntegrationTest
     other = create_test_project!
     s, d = pair!(other)
     c = other.connections.create!(source: s, destination: d)
-    patch toggle_connection_path(c)
+    patch status_connection_path(c, status: "paused")
     assert_response :not_found
     delete connection_path(c)
     assert_response :not_found

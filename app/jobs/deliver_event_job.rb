@@ -22,6 +22,12 @@ class DeliverEventJob < ApplicationJob
 
     event = Event.find(event_id)
     connection = Connection.find(connection_id)
+
+    unless connection.status_active?
+      hold_or_drop(event, connection, replay)
+      return
+    end
+
     attempt = claim_or_build_attempt(event, connection, replay)
 
     transformed = nil
@@ -66,6 +72,29 @@ class DeliverEventJob < ApplicationJob
   end
 
   private
+
+  # A non-active connection neither sends nor fails anything: no HTTP, no
+  # failure counters, no alerts. Paused keeps the delivery as a :held slot
+  # released on resume; disabled drops it outright.
+  def hold_or_drop(event, connection, replay)
+    pending = Attempt.where(event: event, connection: connection, status: :pending)
+                     .order(:attempt_number).last
+    if connection.status_paused?
+      if pending
+        pending.update!(status: :held)
+      else
+        Attempt.create!(
+          event: event, connection: connection,
+          attempt_number: next_attempt_number(event, connection),
+          status: :held, attempted_at: Time.current, replay: replay
+        )
+      end
+    else
+      pending&.destroy!
+    end
+  rescue ActiveRecord::RecordNotUnique
+    # Concurrent jobs raced to hold the same slot; one held row is enough.
+  end
 
   # A manual retry pre-creates a :pending attempt to claim the delivery slot (Slice 5 R5).
   # Consume it if present; automatic deliveries (ingest, retry_on) have none -> build fresh.

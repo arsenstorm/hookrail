@@ -9,6 +9,16 @@ class Connection < ApplicationRecord
 
   scope :unhealthy, -> { where.not(unhealthy_since: nil) }
 
+  # prefix: the legacy `active` boolean column still exists (kept for deploy
+  # overlap), so bare enum methods would collide with `active?`.
+  enum :status, { active: "active", paused: "paused", disabled: "disabled" },
+       prefix: true, validate: true
+
+  # Status transitions carry side effects: resuming releases held deliveries,
+  # disabling cancels anything queued. after_update_commit so a released job
+  # can't fire before the new status is visible.
+  after_update_commit :apply_status_transition, if: :saved_change_to_status?
+
   def unhealthy? = unhealthy_since.present?
 
   # Counters and state flips are single atomic UPDATEs so concurrent delivery
@@ -61,6 +71,29 @@ class Connection < ApplicationRecord
   end
 
   private
+
+  def apply_status_transition
+    previous, current = saved_change_to_status
+    release_held_deliveries if previous == "paused" && current == "active"
+    cancel_queued_deliveries if current == "disabled"
+  end
+
+  # Resume: held slots flip back to pending and re-enqueue in original event
+  # order. ponytail: per-row UPDATE + enqueue; batch if resumes grow past a
+  # few thousand held rows.
+  def release_held_deliveries
+    attempts.held.joins(:event).order("events.received_at, events.id").each do |attempt|
+      attempt.update!(status: :pending, attempted_at: Time.current)
+      DeliverEventJob.perform_later(attempt.event_id, id, replay: attempt.replay)
+    end
+  end
+
+  # Disable: held/pending rows never sent anything, so cancelling them is
+  # deletion, not a terminal status. In-flight scheduled retry jobs die in
+  # DeliverEventJob's status guard instead.
+  def cancel_queued_deliveries
+    attempts.where(status: %w[held pending]).destroy_all
+  end
 
   def endpoints_belong_to_project
     errors.add(:source, "must belong to this project") if source && source.project_id != project_id

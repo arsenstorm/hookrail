@@ -36,7 +36,8 @@ class IngestController < ActionController::Base
       received_at: Time.current
     )
 
-    source.connections.where(active: true).find_each do |connection|
+    # Paused connections still match: their DeliverEventJob converts the delivery into a held attempt instead of sending.
+    source.connections.where(status: %w[active paused]).find_each do |connection|
       next unless connection.routes?(event)
 
       DeliverEventJob.perform_later(event.id, connection.id)

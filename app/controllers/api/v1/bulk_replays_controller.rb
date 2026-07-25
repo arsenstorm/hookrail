@@ -8,6 +8,12 @@ module Api
       def create
         set_event_filters
         connection = Current.project.connections.find(params[:connection_id])
+
+        unless connection.status_active?
+          return render_error(:unprocessable_entity, "connection_not_active",
+                              "That connection is #{connection.status}.")
+        end
+
         in_flight = Attempt.in_flight_event_ids(filtered_events, connection)
         enqueued = 0
         filtered_events.find_each do |event|

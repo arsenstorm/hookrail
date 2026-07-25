@@ -112,9 +112,9 @@ class ApiV1Test < ActionDispatch::IntegrationTest
     _source, connection = build_connection!(project)
 
     patch "/api/v1/connections/#{connection.id}",
-          params: { connection: { active: false } }, headers: auth(raw), as: :json
+          params: { connection: { status: "disabled" } }, headers: auth(raw), as: :json
     assert_response :ok
-    assert_equal false, JSON.parse(response.body)["connection"]["active"]
+    assert_equal "disabled", JSON.parse(response.body)["connection"]["status"]
 
     delete "/api/v1/connections/#{connection.id}", headers: auth(raw)
     assert_response :no_content
