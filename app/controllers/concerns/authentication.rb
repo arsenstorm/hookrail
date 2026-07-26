@@ -33,7 +33,7 @@ module Authentication
                  user.memberships.includes(:organization).order(:created_at).first
     Current.membership = membership
     Current.organization = membership&.organization
-    Current.project = membership&.accessible_projects&.first
+    Current.project = membership&.current_project_or_default
     user
   end
 

@@ -45,6 +45,10 @@ Rails.application.routes.draw do
   # Org-scoped API keys managed in the UI; the JSON API below authenticates with them.
   resources :api_keys, only: %i[index create destroy]
 
+  # Project management (admin) and the per-user project switcher.
+  resources :projects, only: %i[index create update destroy]
+  post "switch_project/:id", to: "project_switches#create", as: :switch_project
+
   # Browser half of the CLI device-flow login.
   get  "cli/authorize", to: "cli_authorizations#show",   as: :cli_authorize
   post "cli/authorize", to: "cli_authorizations#create"
@@ -72,6 +76,7 @@ Rails.application.routes.draw do
   namespace :api do
     namespace :v1 do
       resources :sources, :destinations, only: %i[index show create update destroy]
+      resources :projects, only: :index
       resources :connections, only: %i[index show create update destroy] do
         member { post :transformation_preview, to: "transformation_previews#create" }
       end

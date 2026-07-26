@@ -13,9 +13,10 @@ module Api
 
       private
 
-      # Bearer credential -> org -> its (single) project. Two credential kinds:
-      # org-wide "hk_" API keys (admin-issued, full access) and per-user "hkc_"
-      # CLI tokens (device-flow issued, enforce the user's project role).
+      # Bearer credential -> org -> the optional project_id parameter picks
+      # the project, defaulting to the first. Two credential kinds: org-wide
+      # "hk_" API keys (admin-issued, full access) and per-user "hkc_" CLI
+      # tokens (device-flow issued, enforce the user's project role).
       # Revoked/unknown credentials all read as invalid, and other orgs'
       # resource ids 404, so existence is never leaked.
       def authenticate!
@@ -26,7 +27,7 @@ module Api
         return render_error(:unauthorized, "unauthorized", "Invalid or missing API key") unless api_key
 
         Current.organization = api_key.organization
-        Current.project = api_key.organization.projects.first
+        Current.project = resolve_project!(api_key.organization)
       end
 
       def authenticate_cli_token!(raw)
@@ -38,7 +39,7 @@ module Api
         Current.user = token.user
         Current.membership = membership
         Current.organization = token.organization
-        Current.project = token.organization.projects.first
+        Current.project = resolve_project!(token.organization)
         token.touch_last_used!
 
         # A token is only as strong as its user's role: no project access -> no
@@ -50,6 +51,18 @@ module Api
           unless request.get? || membership.can_edit_project?(Current.project)
             render_error(:forbidden, "forbidden", "Your role is read-only for this project")
           end
+        end
+      end
+
+      # Optional project_id addresses a specific project; absent keeps the
+      # creation-order default for back-compat. A foreign or unknown id raises and
+      # renders the standard 404, leaking nothing. CLI tokens then pass the
+      # per-project role checks above against the resolved project.
+      def resolve_project!(organization)
+        if params[:project_id].present?
+          organization.projects.find(params[:project_id])
+        else
+          organization.projects.order(:id).first
         end
       end
 

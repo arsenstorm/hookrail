@@ -17,6 +17,13 @@ class Membership < ApplicationRecord
                 .where(project_grants: { membership_id: id }).order(:id)
   end
 
+  # The remembered project when it is still accessible, else the first
+  # accessible one — the single fallback seam for stale/revoked choices.
+  def current_project_or_default
+    remembered = current_project_id && accessible_projects.find_by(id: current_project_id)
+    remembered || accessible_projects.first
+  end
+
   def can_view_project?(project)
     return false unless project
     return true if admin_or_owner?
