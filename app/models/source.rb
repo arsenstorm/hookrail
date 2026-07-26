@@ -28,8 +28,37 @@ class Source < ApplicationRecord
       "algorithm" => "sha256",
       "encoding" => "hex",
       "tolerance_seconds" => 300
+    }.freeze,
+    "github" => {
+      "header" => "X-Hub-Signature-256",
+      "header_format" => "value",
+      "signature_prefix" => "sha256=",
+      "payload_template" => "{body}",
+      "algorithm" => "sha256",
+      "encoding" => "hex"
+    }.freeze,
+    "shopify" => {
+      "header" => "X-Shopify-Hmac-Sha256",
+      "header_format" => "value",
+      "payload_template" => "{body}",
+      "algorithm" => "sha256",
+      "encoding" => "base64"
+    }.freeze,
+    "slack" => {
+      "header" => "X-Slack-Signature",
+      "header_format" => "value",
+      "signature_prefix" => "v0=",
+      "timestamp_header" => "X-Slack-Request-Timestamp",
+      "payload_template" => "v0:{timestamp}:{body}",
+      "algorithm" => "sha256",
+      "encoding" => "hex",
+      "tolerance_seconds" => 300
     }.freeze
   }.freeze
+
+  PROVIDER_NAMES = { "stripe" => "Stripe", "github" => "GitHub", "shopify" => "Shopify", "slack" => "Slack" }.freeze
+
+  def self.provider_name(key) = PROVIDER_NAMES[key]
 
   # Drop blank form inputs so presence of `secret` alone means "enabled".
   before_validation { self.verification = verification.to_h.compact_blank }
@@ -73,12 +102,13 @@ class Source < ApplicationRecord
 
   private
 
-  # The preset overwrites its fields on every save so a hand-edited value can't
-  # silently drift from the selected provider; clearing the provider leaves the
-  # written fields as an editable generic config.
+  # The preset replaces every generic field on save, so neither a hand-edited
+  # value nor a leftover from a previously selected provider (Stripe's
+  # tolerance, say) can survive under a provider that doesn't use it. Clearing
+  # the provider leaves the written fields as an editable generic config.
   def apply_verification_preset
     preset = VERIFICATION_PRESETS[verification_provider]
-    self.verification = verification.to_h.merge(preset) if preset
+    self.verification = verification.to_h.slice("provider", "secret").merge(preset) if preset
   end
 
   # Normalizes Parameters / symbol keys; {} clears (dedupe off). An enabled

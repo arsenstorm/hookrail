@@ -1,3 +1,14 @@
+<%# The auth fields that don't belong to the selected type are hidden server-side,
+    so there's no flash of every field before Stimulus connects. %>
+<% auth_type = @destination.auth_type.presence || "none" %>
+<%# A disclosure that hides an error is worse than no disclosure, so anything
+    with an error — or a value the user already set — starts open. %>
+<% advanced_open = @destination.headers.present? || @destination.rate_limit.present? ||
+                   @destination.errors[:rate_limit].any? || @destination.errors[:rate_limit_period].any? %>
+<% summary_class = "flex cursor-pointer list-none items-center gap-1.5 py-2 text-sm font-medium text-neutral-950 select-none [&::-webkit-details-marker]:hidden dark:text-white" %>
+<% chevron = tag.svg('<path fill-rule="evenodd" d="M6.22 4.22a.75.75 0 0 1 1.06 0l3.25 3.25a.75.75 0 0 1 0 1.06l-3.25 3.25a.75.75 0 1 1-1.06-1.06L8.94 8 6.22 5.28a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd"/>'.html_safe,
+      viewBox: "0 0 16 16", "aria-hidden": "true",
+      class: "ease-out-quart size-3.5 shrink-0 fill-current text-neutral-400 transition-transform duration-150 group-open:rotate-90 motion-reduce:transition-none") %>
 <%= form_with model: @destination, class: "space-y-4 max-w-lg" do |f| %>
   <% if @destination.errors.any? %>
     <div class="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-800 inset-ring inset-ring-red-600/20 dark:bg-red-950/40 dark:text-red-200 dark:inset-ring-red-400/25">
@@ -6,48 +17,66 @@
       </ul>
     </div>
   <% end %>
+
   <div>
-    <%= f.label :name, class: "block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1" %>
+    <%= f.label :name, class: "#{ui(:label)} mb-1" %>
     <%= f.text_field :name, class: ui(:input) %>
   </div>
+
   <div>
-    <%= f.label :url, class: "block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1" %>
+    <%= f.label :url, class: "#{ui(:label)} mb-1" %>
     <%= f.text_field :url, class: ui(:input) %>
   </div>
-  <div>
-    <%= f.label :headers_text, "Custom headers", class: "block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1" %>
-    <p class="text-xs text-neutral-500 dark:text-neutral-400 mb-1">One per line, as <code>Key: Value</code>. Sent on every forwarded request.</p>
-    <%= f.text_area :headers_text, rows: 4, value: @destination.headers.map { |k, v| "#{k}: #{v}" }.join("\n"),
-          class: "#{ui(:input)} font-mono" %>
-  </div>
-  <div>
-    <%= f.label :auth_type, "Authentication", class: "block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1" %>
-    <p class="text-xs text-neutral-500 dark:text-neutral-400 mb-1">Sets the <code>Authorization</code> header on every forwarded request, overriding any manual header above.</p>
+
+  <div data-controller="reveal">
+    <%= f.label :auth_type, "Authentication", class: "#{ui(:label)} mb-1" %>
+    <p class="mb-1 <%= ui(:hint) %>">Sets the <code>Authorization</code> header on every forwarded request, overriding any manual header below.</p>
     <%= f.select :auth_type, [ [ "None", "none" ], [ "Bearer token", "bearer" ], [ "Basic auth", "basic" ] ],
-          { selected: @destination.auth_type || "none" },
-          class: ui(:input) %>
-    <div class="mt-2 space-y-2">
-      <%= f.text_field :auth_token, placeholder: "Bearer token",
-            class: ui(:input) %>
-      <div class="flex gap-2">
-        <%= f.text_field :auth_username, placeholder: "Username (basic auth)",
-              class: ui(:input) %>
-        <%= f.text_field :auth_password, placeholder: "Password (basic auth)",
-              class: ui(:input) %>
+          { selected: auth_type },
+          class: "#{ui(:select)} w-full", data: { reveal_target: "select", action: "reveal#update" } %>
+
+    <div class="mt-2" data-reveal-target="section" data-reveal-name="bearer" <%= "hidden" unless auth_type == "bearer" %>>
+      <%= f.label :auth_token, "Token", class: "#{ui(:label)} mb-1" %>
+      <%= f.text_field :auth_token, class: ui(:input) %>
+    </div>
+
+    <div class="mt-2 flex gap-2" data-reveal-target="section" data-reveal-name="basic" <%= "hidden" unless auth_type == "basic" %>>
+      <div class="flex-1">
+        <%= f.label :auth_username, "Username", class: "#{ui(:label)} mb-1" %>
+        <%= f.text_field :auth_username, class: ui(:input) %>
+      </div>
+      <div class="flex-1">
+        <%= f.label :auth_password, "Password", class: "#{ui(:label)} mb-1" %>
+        <%= f.text_field :auth_password, class: ui(:input) %>
       </div>
     </div>
   </div>
-  <div>
-    <%= f.label :rate_limit, "Rate limit", class: "block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1" %>
-    <p class="text-xs text-neutral-500 dark:text-neutral-400 mb-1">Caps how fast deliveries go out to this destination. Anything over the
-      limit queues and is sent as slots free up — nothing is dropped. Leave blank for unlimited.</p>
-    <div class="flex gap-2">
-      <%= f.number_field :rate_limit, min: 1, placeholder: "Unlimited",
-            class: ui(:input) %>
-      <%= f.select :rate_limit_period, [ [ "per second", "second" ], [ "per minute", "minute" ] ],
-            { selected: @destination.rate_limit_period || "second" },
-            class: ui(:input) %>
-    </div>
-  </div>
+
+  <section class="border-t border-neutral-950/10 pt-4 dark:border-white/10">
+    <details class="group" <%= "open" if advanced_open %>>
+      <summary class="<%= summary_class %>"><%= chevron %>Advanced</summary>
+      <div class="mt-2 space-y-4">
+        <div>
+          <%= f.label :headers_text, "Custom headers", class: "#{ui(:label)} mb-1" %>
+          <p class="mb-1 <%= ui(:hint) %>">One per line, as <code>Key: Value</code>. Sent on every forwarded request.</p>
+          <%= f.text_area :headers_text, rows: 4, value: @destination.headers.map { |k, v| "#{k}: #{v}" }.join("\n"),
+                class: "#{ui(:input)} font-mono" %>
+        </div>
+
+        <div>
+          <%= f.label :rate_limit, "Rate limit", class: "#{ui(:label)} mb-1" %>
+          <p class="mb-1 <%= ui(:hint) %>">Caps how fast deliveries go out to this destination. Anything over the
+            limit queues and is sent as slots free up — nothing is dropped. Leave blank for unlimited.</p>
+          <div class="flex gap-2">
+            <%= f.number_field :rate_limit, min: 1, placeholder: "Unlimited", class: ui(:input) %>
+            <%= f.select :rate_limit_period, [ [ "per second", "second" ], [ "per minute", "minute" ] ],
+                  { selected: @destination.rate_limit_period || "second" },
+                  class: "#{ui(:select)} w-full" %>
+          </div>
+        </div>
+      </div>
+    </details>
+  </section>
+
   <%= f.submit submit_label, class: ui(:button_primary) %>
 <% end %>

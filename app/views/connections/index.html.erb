@@ -1,4 +1,8 @@
 <% content_for :title, "Connections" %>
+<% disable_confirm = "Disable this connection? Held and pending deliveries are cancelled." %>
+<% delete_confirm = "Delete this connection? This also deletes its delivery attempts." %>
+<%# button_to renders a <button>, which doesn't inherit the row's text-sm. %>
+<% link_button = "#{ui(:link)} cursor-pointer text-sm" %>
 <div>
   <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
     <h1 class="<%= ui(:heading) %>">Connections</h1>
@@ -12,66 +16,97 @@
   <%= render "shared/unhealthy_banner", link: false %>
 
   <% if @connections.empty? %>
-    <p class="text-neutral-500 dark:text-neutral-400">No connections yet.</p>
+    <%= render "shared/empty_state", title: "No connections yet",
+          body: "A connection routes events from a source to a destination, with optional filters and transformations.",
+          cta_label: "New connection", cta_path: new_connection_path %>
   <% else %>
-    <div class="<%= ui(:scroller) %>"><div class="<%= ui(:scroller_inner) %>"><table class="w-full text-sm">
-      <thead class="border-b border-neutral-950/10 text-left text-neutral-500 dark:border-white/10 dark:text-neutral-400">
-        <tr>
-          <th class="<%= ui(:th) %>">Route</th>
-          <th class="<%= ui(:th) %>">Status</th>
-          <th class="<%= ui(:th) %>">Actions</th>
-        </tr>
-      </thead>
-      <tbody class="<%= ui(:table_body) %>">
-        <% @connections.each do |connection| %>
-          <tr>
-            <td class="<%= ui(:td_muted) %>">
-              <%= connection.source.name %> <span class="text-neutral-400 dark:text-neutral-500">→</span> <%= connection.destination.name %>
-              <% if connection.routing_rule.present? %>
-                <span class="ml-1 rounded-full bg-neutral-950/5 dark:bg-white/5 text-neutral-600 dark:text-neutral-400 px-2 py-0.5 text-xs">filtered</span>
-              <% end %>
-            </td>
-            <td class="<%= ui(:td_muted) %>">
-              <% if connection.status_active? %>
-                <span class="text-green-700">active</span>
-              <% elsif connection.status_paused? %>
-                <span class="rounded-full bg-amber-100 text-amber-800 px-2 py-0.5 text-xs">paused</span>
-              <% else %>
-                <span class="text-neutral-400 dark:text-neutral-500">disabled</span>
-              <% end %>
-              <% if connection.unhealthy? %>
-                <div class="mt-1 flex items-center gap-1.5">
-                  <span class="rounded-full bg-red-100 text-red-800 px-2 py-0.5 text-xs">unhealthy</span>
-                  <span class="text-xs text-red-700">failing since <%= timestamp_tag(connection.unhealthy_since) %></span>
-                </div>
-              <% end %>
-            </td>
-            <td class="<%= ui(:td_muted) %>">
-              <% if can_edit? %>
-                <%= link_to "Edit", edit_connection_path(connection), class: "#{ui(:link)} text-sm" %>
-                <% if connection.status_active? %>
-                  <%= button_to "Pause", status_connection_path(connection), method: :patch, params: { status: "paused" },
-                        class: "#{ui(:link)} text-sm", form: { class: "inline" } %>
-                <% elsif connection.status_paused? %>
-                  <%= button_to "Resume", status_connection_path(connection), method: :patch, params: { status: "active" },
-                        class: "#{ui(:link)} text-sm", form: { class: "inline" } %>
-                <% end %>
-                <% if connection.status_disabled? %>
-                  <%= button_to "Enable", status_connection_path(connection), method: :patch, params: { status: "active" },
-                        class: "#{ui(:link)} text-sm", form: { class: "inline" } %>
-                <% else %>
-                  <%= button_to "Disable", status_connection_path(connection), method: :patch, params: { status: "disabled" },
-                        class: "#{ui(:link)} text-sm", form: { class: "inline" },
-                        data: { turbo_confirm: "Disable this connection? Held and pending deliveries are cancelled." } %>
-                <% end %>
-                <%= button_to "Delete", connection_path(connection), method: :delete,
-                      class: ui(:danger_link), form: { class: "inline" },
-                      data: { turbo_confirm: "Delete this connection? This also deletes its delivery attempts." } %>
-              <% end %>
-            </td>
-          </tr>
-        <% end %>
-      </tbody>
-    </table></div></div>
+    <div class="<%= ui(:scroller) %>">
+      <div class="<%= ui(:scroller_inner) %>">
+        <table class="w-full text-sm">
+          <thead class="<%= ui(:table_head) %>">
+            <tr>
+              <th class="<%= ui(:th) %> w-full pr-6">Route</th>
+              <th class="<%= ui(:th) %> w-px pr-6">Status</th>
+              <th class="<%= ui(:th) %> w-px text-right"><span class="sr-only">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody class="<%= ui(:table_body) %>">
+            <% @connections.each do |connection| %>
+              <tr>
+                <td class="<%= ui(:td) %> w-full pr-6">
+                  <% route = capture do %>
+                    <span class="font-medium"><%= connection.source.name %></span>
+                    <span class="text-neutral-400 dark:text-neutral-500">→</span>
+                    <span class="font-medium"><%= connection.destination.name %></span>
+                  <% end %>
+                  <%# min-h-10 matches the sources table, whose copy button sets the row height. %>
+                  <div class="flex min-h-10 items-center gap-1.5">
+                    <% if can_edit? %>
+                      <%= link_to route, edit_connection_path(connection), class: "hover:text-oxblood-700 dark:hover:text-oxblood-300" %>
+                    <% else %>
+                      <%= route %>
+                    <% end %>
+                    <% if connection.routing_rule.present? %>
+                      <span class="<%= ui(:badge) %> <%= ui(:badge_neutral) %>">filtered</span>
+                    <% end %>
+                  </div>
+                </td>
+                <td class="<%= ui(:td) %> w-px pr-6">
+                  <%# An active connection reports its health; a paused or disabled one
+                      reports that state, with health underneath if it is failing. %>
+                  <% if connection.unhealthy? %>
+                    <% unhealthy = capture do %>
+                      <span class="<%= ui(:badge) %> <%= ui(:badge_red) %>">unhealthy</span>
+                      <span class="text-xs text-red-700 dark:text-red-300">failing since <%= timestamp_tag(connection.unhealthy_since) %></span>
+                    <% end %>
+                  <% end %>
+                  <% if connection.status_active? %>
+                    <% if connection.unhealthy? %>
+                      <div class="flex items-center gap-1.5"><%= unhealthy %></div>
+                    <% else %>
+                      <span class="<%= ui(:badge) %> <%= ui(:badge_green) %>">healthy</span>
+                    <% end %>
+                  <% else %>
+                    <% if connection.status_paused? %>
+                      <span class="<%= ui(:badge) %> <%= ui(:badge_amber) %>">paused</span>
+                    <% else %>
+                      <span class="<%= ui(:badge) %> <%= ui(:badge_neutral) %>">disabled</span>
+                    <% end %>
+                    <% if connection.unhealthy? %>
+                      <div class="mt-1 flex items-center gap-1.5"><%= unhealthy %></div>
+                    <% end %>
+                  <% end %>
+                </td>
+                <td class="<%= ui(:td) %> w-px whitespace-nowrap text-right">
+                  <% if can_edit? %>
+                    <div class="flex items-center justify-end gap-3">
+                      <%= link_to "Edit", edit_connection_path(connection), class: ui(:link) %>
+                      <% if connection.status_active? %>
+                        <%= button_to "Pause", status_connection_path(connection), method: :patch, params: { status: "paused" },
+                              class: link_button, form: { class: "inline" } %>
+                      <% elsif connection.status_paused? %>
+                        <%= button_to "Resume", status_connection_path(connection), method: :patch, params: { status: "active" },
+                              class: link_button, form: { class: "inline" } %>
+                      <% end %>
+                      <% if connection.status_disabled? %>
+                        <%= button_to "Enable", status_connection_path(connection), method: :patch, params: { status: "active" },
+                              class: link_button, form: { class: "inline" } %>
+                      <% else %>
+                        <%= button_to "Disable", status_connection_path(connection), method: :patch, params: { status: "disabled" },
+                              class: link_button, form: { class: "inline" },
+                              data: { turbo_confirm: disable_confirm } %>
+                      <% end %>
+                      <%= button_to "Delete", connection_path(connection), method: :delete,
+                            class: ui(:danger_link), form: { class: "inline" },
+                            data: { turbo_confirm: delete_confirm } %>
+                    </div>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
   <% end %>
 </div>

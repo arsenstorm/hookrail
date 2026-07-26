@@ -10,8 +10,11 @@ class SourcesController < ApplicationController
     @source = Current.project.sources.find(params[:id])
   end
 
+  # An unknown ?provider= is ignored rather than rejected: the picker is the
+  # fallback, so a stale link just lands back on it.
   def new
-    @source = Current.project.sources.new
+    provider = params[:provider].presence_in(Source::VERIFICATION_PRESETS.keys)
+    @source = Current.project.sources.new(verification_provider: provider, name: Source.provider_name(provider))
   end
 
   def create

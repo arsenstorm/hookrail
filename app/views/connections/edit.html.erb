@@ -1,11 +1,20 @@
 <% content_for :title, "Edit connection" %>
 <% rule = @connection.routing_rule.to_h %>
 <% policy = @connection.retry_policy.to_h %>
+<%# A disclosure that hides an error — or work in progress — is worse than no
+    disclosure, so those sections start open. %>
+<% transformation_open = @connection.transformation.present? || @preview.present? || @preview_error.present? ||
+                         params[:preview_event_id].present? || @connection.errors[:transformation].any? %>
+<% retry_open = policy.present? || @connection.errors[:retry_policy].any? %>
+<% summary_class = "flex cursor-pointer list-none items-center gap-1.5 py-2 text-sm font-medium text-neutral-950 select-none [&::-webkit-details-marker]:hidden dark:text-white" %>
+<% chevron = tag.svg('<path fill-rule="evenodd" d="M6.22 4.22a.75.75 0 0 1 1.06 0l3.25 3.25a.75.75 0 0 1 0 1.06l-3.25 3.25a.75.75 0 1 1-1.06-1.06L8.94 8 6.22 5.28a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd"/>'.html_safe,
+      viewBox: "0 0 16 16", "aria-hidden": "true",
+      class: "ease-out-quart size-3.5 shrink-0 fill-current text-neutral-400 transition-transform duration-150 group-open:rotate-90 motion-reduce:transition-none") %>
 <div>
   <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
     <div>
       <h1 class="<%= ui(:heading) %>">Edit connection</h1>
-      <p class="text-sm text-neutral-500 dark:text-neutral-400 mt-1"><%= @connection.source.name %> <span class="text-neutral-400 dark:text-neutral-500">→</span> <%= @connection.destination.name %></p>
+      <p class="mt-1 <%= ui(:hint) %>"><%= @connection.source.name %> <span class="text-neutral-400 dark:text-neutral-500">→</span> <%= @connection.destination.name %></p>
     </div>
     <%= link_to "Connections", connections_path, class: ui(:muted_link) %>
   </div>
@@ -25,109 +34,117 @@
     </p>
 
     <div>
-      <%= f.label :rule_path, "Path", class: "block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1" %>
-      <p class="text-xs text-neutral-500 dark:text-neutral-400 mb-1">Request path the webhook arrived on. <code>*</code> is a wildcard (glob, not regex), e.g. <code>/hooks/*</code>.</p>
+      <%= f.label :rule_path, "Path", class: "#{ui(:label)} mb-1" %>
+      <p class="mb-1 <%= ui(:hint) %>">Request path the webhook arrived on. <code>*</code> is a wildcard (glob, not regex), e.g. <code>/hooks/*</code>.</p>
       <%= f.text_field :rule_path, value: rule["path"], placeholder: "/hooks/*",
             class: "#{ui(:input)} font-mono" %>
     </div>
 
     <div>
-      <%= f.label :rule_http_method, "Method", class: "block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1" %>
+      <%= f.label :rule_http_method, "Method", class: "#{ui(:label)} mb-1" %>
       <%= f.select :rule_http_method, %w[GET POST PUT PATCH DELETE],
             { include_blank: "Any method", selected: rule["http_method"] },
-            class: ui(:input) %>
+            class: "#{ui(:select)} w-full" %>
     </div>
 
     <div>
-      <%= f.label :rule_headers_text, "Headers", class: "block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1" %>
-      <p class="text-xs text-neutral-500 dark:text-neutral-400 mb-1">One per line, as <code>Name: value</code>. Names are case-insensitive, values must match exactly. Or use an operator object, e.g. <code>X-Event-Count: {"gt": 5}</code>.</p>
+      <%= f.label :rule_headers_text, "Headers", class: "#{ui(:label)} mb-1" %>
+      <p class="mb-1 <%= ui(:hint) %>">One per line, as <code>Name: value</code>. Names are case-insensitive, values must match exactly. Or use an operator object, e.g. <code>X-Event-Count: {"gt": 5}</code>.</p>
       <%= f.text_area :rule_headers_text, rows: 3, placeholder: "X-Github-Event: push",
             value: rule["headers"].to_h.map { |k, v| "#{k}: #{v.is_a?(Hash) ? v.to_json : v}" }.join("\n"),
             class: "#{ui(:input)} font-mono" %>
     </div>
 
     <div>
-      <%= f.label :rule_body_text, "Body fields", class: "block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1" %>
-      <p class="text-xs text-neutral-500 dark:text-neutral-400 mb-1">One per line, as <code>dot.path=value</code>, e.g. <code>data.object.status=succeeded</code>. A body that is not a JSON object matches nothing. A value may be an operator object: <code>amount={"gt": 1000}</code> — operators <code>gt gte lt lte neq contains in exists</code>.</p>
+      <%= f.label :rule_body_text, "Body fields", class: "#{ui(:label)} mb-1" %>
+      <p class="mb-1 <%= ui(:hint) %>">One per line, as <code>dot.path=value</code>, e.g. <code>data.object.status=succeeded</code>. A body that is not a JSON object matches nothing. A value may be an operator object: <code>amount={"gt": 1000}</code> — operators <code>gt gte lt lte neq contains in exists</code>.</p>
       <%= f.text_area :rule_body_text, rows: 3, placeholder: "type=invoice.paid",
             value: rule["body"].to_h.map { |k, v| "#{k}=#{v.is_a?(Hash) ? v.to_json : v}" }.join("\n"),
             class: "#{ui(:input)} font-mono" %>
     </div>
 
-    <div class="border-t border-neutral-950/10 pt-4 dark:border-white/10">
-      <h2 class="mb-2 text-sm font-semibold text-neutral-950 dark:text-white">Transformation</h2>
-      <p class="text-xs text-neutral-500 dark:text-neutral-400 mb-2">
-        Optional JavaScript reshaping each request before it is forwarded. Define
-        <code>function transform(request)</code>; <code>request</code> carries <code>headers</code>,
-        <code>body</code>, <code>path</code> and <code>query</code>. A JSON body arrives parsed, anything else
-        as the raw string. The returned object's <code>headers</code> and <code>body</code> replace the
-        outbound request — an object body is serialized to JSON, a string is sent as-is. <code>path</code> and
-        <code>query</code> are inputs only: deliveries always go to the destination's URL.
-      </p>
-      <p class="text-xs text-neutral-500 dark:text-neutral-400 mb-2">
-        The code runs sandboxed with no network or filesystem access and is killed after 1 second. If it
-        throws, times out, or returns something other than an object, the delivery fails before anything is
-        sent and retries as usual.
-      </p>
-      <%= f.text_area :transformation, rows: 10,
-            placeholder: "function transform(request) {\n  return {\n    headers: { \"Content-Type\": \"application/json\" },\n    body: { id: request.body.id }\n  };\n}",
-            class: "#{ui(:input)} font-mono" %>
+    <section class="border-t border-neutral-950/10 pt-4 dark:border-white/10">
+      <details class="group" <%= "open" if transformation_open %>>
+        <summary class="<%= summary_class %>"><%= chevron %>Transformation</summary>
+        <div class="mt-2">
+          <p class="mb-2 <%= ui(:hint) %>">
+            Optional JavaScript reshaping each request before it is forwarded. Define
+            <code>function transform(request)</code>; <code>request</code> carries <code>headers</code>,
+            <code>body</code>, <code>path</code> and <code>query</code>. A JSON body arrives parsed, anything else
+            as the raw string. The returned object's <code>headers</code> and <code>body</code> replace the
+            outbound request — an object body is serialized to JSON, a string is sent as-is. <code>path</code> and
+            <code>query</code> are inputs only: deliveries always go to the destination's URL.
+          </p>
+          <p class="mb-2 <%= ui(:hint) %>">
+            The code runs sandboxed with no network or filesystem access and is killed after 1 second. If it
+            throws, times out, or returns something other than an object, the delivery fails before anything is
+            sent and retries as usual.
+          </p>
+          <%= f.text_area :transformation, rows: 10,
+                placeholder: "function transform(request) {\n  return {\n    headers: { \"Content-Type\": \"application/json\" },\n    body: { id: request.body.id }\n  };\n}",
+                class: "#{ui(:input)} font-mono" %>
 
-      <% if @preview_events.any? %>
-        <div class="flex items-center gap-2 mt-2">
-          <%= select_tag :preview_event_id,
-                options_for_select(@preview_events.map { |e|
-                  [ "##{e.id} · #{e.http_method} #{e.path} · #{e.received_at.strftime("%m-%d %H:%M")}", e.id ]
-                }, params[:preview_event_id]),
-                class: "#{ui(:input)} flex-1" %>
-          <%= f.submit "Preview", name: "preview",
-                class: ui(:button_secondary) %>
+          <% if @preview_events.any? %>
+            <div class="flex items-center gap-2 mt-2">
+              <%= select_tag :preview_event_id,
+                    options_for_select(@preview_events.map { |e|
+                      [ "##{e.id} · #{e.http_method} #{e.path} · #{timestamp_text(e.received_at)}", e.id ]
+                    }, params[:preview_event_id]),
+                    class: "#{ui(:select)} flex-1" %>
+              <%= f.submit "Preview", name: "preview",
+                    class: ui(:button_secondary) %>
+            </div>
+          <% end %>
+
+          <% if @preview_error.present? %>
+            <div class="mt-3 rounded-md bg-red-50 p-3 text-sm text-red-800"><%= @preview_error %></div>
+          <% end %>
+          <% if @preview %>
+            <div class="mt-3">
+              <div class="text-xs text-neutral-500 dark:text-neutral-400">Headers</div>
+              <pre class="overflow-x-auto rounded-lg bg-neutral-950/5 p-2 text-xs text-neutral-800 dark:bg-white/5 dark:text-neutral-200"><%= JSON.pretty_generate(@preview[:headers]) %></pre>
+              <div class="text-xs text-neutral-500 dark:text-neutral-400 mt-2">Body</div>
+              <pre class="overflow-x-auto rounded-lg bg-neutral-950/5 p-2 text-xs text-neutral-800 dark:bg-white/5 dark:text-neutral-200"><%= @preview[:body] %></pre>
+            </div>
+          <% end %>
         </div>
-      <% end %>
+      </details>
+    </section>
 
-      <% if @preview_error.present? %>
-        <div class="mt-3 rounded-md bg-red-50 p-3 text-sm text-red-800"><%= @preview_error %></div>
-      <% end %>
-      <% if @preview %>
-        <div class="mt-3">
-          <div class="text-xs text-neutral-500 dark:text-neutral-400">Headers</div>
-          <pre class="overflow-x-auto rounded-lg bg-neutral-950/5 p-2 text-xs text-neutral-800 dark:bg-white/5 dark:text-neutral-200"><%= JSON.pretty_generate(@preview[:headers]) %></pre>
-          <div class="text-xs text-neutral-500 dark:text-neutral-400 mt-2">Body</div>
-          <pre class="overflow-x-auto rounded-lg bg-neutral-950/5 p-2 text-xs text-neutral-800 dark:bg-white/5 dark:text-neutral-200"><%= @preview[:body] %></pre>
+    <section class="border-t border-neutral-950/10 pt-4 dark:border-white/10">
+      <details class="group" <%= "open" if retry_open %>>
+        <summary class="<%= summary_class %>"><%= chevron %>Retry policy</summary>
+        <div class="mt-2">
+          <p class="mb-2 <%= ui(:hint) %>">
+            By default a failed delivery is retried after 10s, 1m, 5m, 30m and 2h — 6 attempts in all. A policy
+            here replaces that schedule for this connection only. At most 50 attempts, and the whole schedule
+            must fit within 7 days. Leave all three fields blank to keep the default.
+          </p>
+
+          <div class="grid grid-cols-3 gap-3">
+            <div class="col-span-3">
+              <%= f.label :retry_strategy, "Strategy", class: "#{ui(:label)} mb-1" %>
+              <%= f.select :retry_strategy,
+                    [ [ "Linear — same wait every retry", "linear" ], [ "Exponential — wait doubles each retry", "exponential" ] ],
+                    { include_blank: "Default schedule", selected: policy["strategy"] },
+                    class: "#{ui(:select)} w-full" %>
+            </div>
+
+            <div>
+              <%= f.label :retry_interval, "Interval (seconds)", class: "#{ui(:label)} mb-1" %>
+              <%= f.number_field :retry_interval, value: policy["interval"], min: 1,
+                    class: ui(:input) %>
+            </div>
+
+            <div>
+              <%= f.label :retry_max_attempts, "Max attempts", class: "#{ui(:label)} mb-1" %>
+              <%= f.number_field :retry_max_attempts, value: policy["max_attempts"], min: 1, max: 50,
+                    class: ui(:input) %>
+            </div>
+          </div>
         </div>
-      <% end %>
-    </div>
-
-    <div class="border-t border-neutral-950/10 pt-4 dark:border-white/10">
-      <h2 class="mb-2 text-sm font-semibold text-neutral-950 dark:text-white">Retry policy</h2>
-      <p class="text-xs text-neutral-500 dark:text-neutral-400 mb-2">
-        By default a failed delivery is retried after 10s, 1m, 5m, 30m and 2h — 6 attempts in all. A policy
-        here replaces that schedule for this connection only. At most 50 attempts, and the whole schedule
-        must fit within 7 days. Leave all three fields blank to keep the default.
-      </p>
-
-      <div class="grid grid-cols-3 gap-3">
-        <div class="col-span-3">
-          <%= f.label :retry_strategy, "Strategy", class: "block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1" %>
-          <%= f.select :retry_strategy,
-                [ [ "Linear — same wait every retry", "linear" ], [ "Exponential — wait doubles each retry", "exponential" ] ],
-                { include_blank: "Default schedule", selected: policy["strategy"] },
-                class: ui(:input) %>
-        </div>
-
-        <div>
-          <%= f.label :retry_interval, "Interval (seconds)", class: "block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1" %>
-          <%= f.number_field :retry_interval, value: policy["interval"], min: 1,
-                class: ui(:input) %>
-        </div>
-
-        <div>
-          <%= f.label :retry_max_attempts, "Max attempts", class: "block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1" %>
-          <%= f.number_field :retry_max_attempts, value: policy["max_attempts"], min: 1, max: 50,
-                class: ui(:input) %>
-        </div>
-      </div>
-    </div>
+      </details>
+    </section>
 
     <div class="flex items-center gap-4">
       <%= f.submit "Save connection", class: ui(:button_primary) %>

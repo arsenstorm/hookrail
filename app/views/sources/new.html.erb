@@ -1,9 +1,39 @@
 <% content_for :title, "New source" %>
+<%# A failed create re-renders this action, so errors force the form phase —
+    otherwise the picker would swallow them. %>
+<% preset = @source.verification_provider.presence %>
+<% form_phase = preset || params[:manual].present? || @source.errors.any? %>
 <div>
-  <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
-    <h1 class="<%= ui(:heading) %>">New source</h1>
-  </div>
+  <h1 class="<%= ui(:heading) %>">New source</h1>
 
-  <%= render "form", submit_label: "Create source" %>
-  <%= link_to "← Sources", sources_path, class: "#{ui(:muted_link)} mt-4 inline-block" %>
+  <% if form_phase %>
+    <% if preset %>
+      <div class="mt-4 mb-6 inline-flex items-center gap-2 rounded-full py-1.5 pr-3 pl-2.5 text-sm inset-ring inset-ring-neutral-950/10 dark:inset-ring-white/10">
+        <%= render "provider_logo", provider: preset, class: "size-4" %>
+        <span class="font-medium"><%= Source.provider_name(preset) %></span>
+        <%= link_to "Change", new_source_path, class: ui(:muted_link) %>
+      </div>
+    <% end %>
+
+    <%= render "form", submit_label: "Create source", preset: preset %>
+    <%= link_to "← Sources", sources_path, class: "#{ui(:muted_link)} mt-4 inline-block" %>
+  <% else %>
+    <p class="mt-1 <%= ui(:hint) %>">Where will these webhooks come from?</p>
+
+    <div class="mt-6 grid max-w-md grid-cols-3 gap-3 sm:grid-cols-4">
+      <% Source::PROVIDER_NAMES.each do |key, name| %>
+        <%= link_to new_source_path(provider: key), title: name,
+              class: "ease-out-quart flex aspect-square flex-col items-center justify-center gap-2 rounded-xl transition-[background-color] duration-150 inset-ring inset-ring-neutral-950/10 hover:bg-neutral-950/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-950/40 motion-reduce:transition-none dark:inset-ring-white/10 dark:hover:bg-white/5 dark:focus-visible:outline-white/40" do %>
+          <%= render "provider_logo", provider: key, class: "size-7" %>
+          <span class="text-xs text-neutral-500 dark:text-neutral-400"><%= name %></span>
+        <% end %>
+      <% end %>
+    </div>
+
+    <p class="mt-6">
+      <%= link_to "Or continue manually &rarr;".html_safe, new_source_path(manual: 1), class: ui(:muted_link) %>
+    </p>
+
+    <%= link_to "← Sources", sources_path, class: "#{ui(:muted_link)} mt-6 inline-block" %>
+  <% end %>
 </div>

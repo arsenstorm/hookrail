@@ -1,4 +1,16 @@
-<%= form_with model: @source, class: "space-y-4 max-w-md" do |f| %>
+<%# preset: a provider key when the caller already picked one — then the
+    generic fields are hidden, since the model syncs them from the preset. %>
+<% preset = local_assigns[:preset] %>
+<% divider = "border-t border-neutral-950/10 pt-4 dark:border-white/10" %>
+<%# A disclosure that hides an error is worse than no disclosure, so anything
+    with an error — or a value the user already set — starts open. %>
+<% disclose = ->(*attrs) { attrs.any? { |a| @source.errors[a].any? || @source.public_send(a).present? } } %>
+<% summary_class = "flex cursor-pointer list-none items-center gap-1.5 py-2 text-sm font-medium text-neutral-950 select-none [&::-webkit-details-marker]:hidden dark:text-white" %>
+<% chevron = tag.svg('<path fill-rule="evenodd" d="M6.22 4.22a.75.75 0 0 1 1.06 0l3.25 3.25a.75.75 0 0 1 0 1.06l-3.25 3.25a.75.75 0 1 1-1.06-1.06L8.94 8 6.22 5.28a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd"/>'.html_safe,
+      viewBox: "0 0 16 16", "aria-hidden": "true",
+      class: "ease-out-quart size-3.5 shrink-0 fill-current text-neutral-400 transition-transform duration-150 group-open:rotate-90 motion-reduce:transition-none") %>
+<%= form_with model: @source, class: "space-y-4 max-w-md",
+      data: { controller: "confirm-blank-secret", action: "submit->confirm-blank-secret#check" } do |f| %>
   <% if @source.errors.any? %>
     <div class="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-800 inset-ring inset-ring-red-600/20 dark:bg-red-950/40 dark:text-red-200 dark:inset-ring-red-400/25">
       <ul class="list-disc list-inside">
@@ -7,135 +19,165 @@
     </div>
   <% end %>
   <div>
-    <%= f.label :name, class: "block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1" %>
+    <%= f.label :name, class: "#{ui(:label)} mb-1" %>
     <%= f.text_field :name, class: ui(:input) %>
   </div>
-  <section class="border-t pt-4 space-y-4">
+  <section class="<%= divider %> space-y-4">
     <div>
-      <h2 class="text-sm font-semibold text-neutral-950 dark:text-white">Inbound verification</h2>
-      <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+      <h2 class="<%= ui(:section) %>">Inbound verification</h2>
+      <p class="mt-1 <%= ui(:hint) %>">
         Optional HMAC signature check on incoming webhooks. Leave the secret blank to disable verification
         and accept every request.
       </p>
     </div>
 
-    <div>
-      <%= f.label :verification_provider, "Provider", class: "block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1" %>
-      <%= f.select :verification_provider, [ [ "Generic (configure below)", "" ], [ "Stripe", "stripe" ] ], {},
-            class: ui(:input) %>
-      <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-1">A provider preset needs only the signing secret — every field below is filled in automatically and kept in sync. Switching back to generic keeps the values for editing.</p>
-    </div>
+    <% if preset %>
+      <%= f.hidden_field :verification_provider %>
+      <div>
+        <%= f.label :verification_secret, "Signing secret", class: "#{ui(:label)} mb-1" %>
+        <%= f.text_field :verification_secret, class: ui(:input), data: { confirm_blank_secret_target: "secret" } %>
+        <p class="mt-1 <%= ui(:hint) %>">The secret <%= Source.provider_name(preset) %> shows when you create the webhook endpoint. Every other setting comes from the preset.</p>
+      </div>
+    <% else %>
+      <div>
+        <%= f.label :verification_provider, "Provider", class: "#{ui(:label)} mb-1" %>
+        <%= f.select :verification_provider,
+              [ [ "Generic (configure below)", "" ] ] + Source::PROVIDER_NAMES.map { |k, v| [ v, k ] }, {},
+              class: "#{ui(:select)} w-full" %>
+        <p class="mt-1 <%= ui(:hint) %>">A provider preset needs only the signing secret — everything under Advanced verification is filled in automatically and kept in sync. Switching back to generic keeps the values for editing.</p>
+      </div>
 
-    <div>
-      <%= f.label :verification_secret, "Signing secret", class: "block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1" %>
-      <%= f.text_field :verification_secret, class: ui(:input) %>
-    </div>
+      <div>
+        <%= f.label :verification_secret, "Signing secret", class: "#{ui(:label)} mb-1" %>
+        <%= f.text_field :verification_secret, class: ui(:input), data: { confirm_blank_secret_target: "secret" } %>
+      </div>
 
-    <div>
-      <%= f.label :verification_header, "Signature header", class: "block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1" %>
-      <%= f.text_field :verification_header, class: ui(:input) %>
-    </div>
+      <details class="group" <%= "open" if disclose.(:verification_header, :verification_algorithm, :verification_encoding,
+                                                     :verification_header_format, :verification_signature_prefix,
+                                                     :verification_signature_key, :verification_timestamp_key,
+                                                     :verification_timestamp_header, :verification_payload_template,
+                                                     :verification_tolerance_seconds) %>>
+        <summary class="<%= summary_class %>"><%= chevron %>Advanced verification</summary>
+        <div class="mt-2 space-y-4">
+          <div>
+            <%= f.label :verification_header, "Signature header", class: "#{ui(:label)} mb-1" %>
+            <%= f.text_field :verification_header, class: ui(:input) %>
+          </div>
 
-    <div>
-      <%= f.label :verification_algorithm, "Algorithm", class: "block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1" %>
-      <%= f.select :verification_algorithm, %w[sha256 sha1 sha512], {},
-            class: ui(:input) %>
-    </div>
+          <div>
+            <%= f.label :verification_algorithm, "Algorithm", class: "#{ui(:label)} mb-1" %>
+            <%= f.select :verification_algorithm, %w[sha256 sha1 sha512], {}, class: "#{ui(:select)} w-full" %>
+          </div>
 
-    <div>
-      <%= f.label :verification_encoding, "Encoding", class: "block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1" %>
-      <%= f.select :verification_encoding, %w[hex base64], {},
-            class: ui(:input) %>
-    </div>
+          <div>
+            <%= f.label :verification_encoding, "Encoding", class: "#{ui(:label)} mb-1" %>
+            <%= f.select :verification_encoding, %w[hex base64], {}, class: "#{ui(:select)} w-full" %>
+          </div>
 
-    <div>
-      <%= f.label :verification_header_format, "Header format", class: "block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1" %>
-      <%= f.select :verification_header_format,
-            [ [ "Entire header value", "value" ], [ "Comma-separated key=value pairs", "kv" ] ], {},
-            class: ui(:input) %>
-    </div>
+          <div>
+            <%= f.label :verification_header_format, "Header format", class: "#{ui(:label)} mb-1" %>
+            <%= f.select :verification_header_format,
+                  [ [ "Entire header value", "value" ], [ "Comma-separated key=value pairs", "kv" ] ], {},
+                  class: "#{ui(:select)} w-full" %>
+          </div>
 
-    <div>
-      <%= f.label :verification_signature_prefix, "Signature prefix", class: "block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1" %>
-      <%= f.text_field :verification_signature_prefix, placeholder: "sha256=",
-            class: ui(:input) %>
-    </div>
+          <div>
+            <%= f.label :verification_signature_prefix, "Signature prefix", class: "#{ui(:label)} mb-1" %>
+            <%= f.text_field :verification_signature_prefix, placeholder: "sha256=", class: ui(:input) %>
+          </div>
 
-    <div>
-      <%= f.label :verification_signature_key, "Signature key", class: "block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1" %>
-      <%= f.text_field :verification_signature_key, placeholder: "v1",
-            class: ui(:input) %>
-      <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-1">Only used when the header format is key=value pairs.</p>
-    </div>
+          <div>
+            <%= f.label :verification_signature_key, "Signature key", class: "#{ui(:label)} mb-1" %>
+            <%= f.text_field :verification_signature_key, placeholder: "v1", class: ui(:input) %>
+            <p class="mt-1 <%= ui(:hint) %>">Only used when the header format is key=value pairs.</p>
+          </div>
 
-    <div>
-      <%= f.label :verification_timestamp_key, "Timestamp key", class: "block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1" %>
-      <%= f.text_field :verification_timestamp_key, placeholder: "t",
-            class: ui(:input) %>
-    </div>
+          <div>
+            <%= f.label :verification_timestamp_key, "Timestamp key", class: "#{ui(:label)} mb-1" %>
+            <%= f.text_field :verification_timestamp_key, placeholder: "t", class: ui(:input) %>
+          </div>
 
-    <div>
-      <%= f.label :verification_timestamp_header, "Timestamp header", class: "block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1" %>
-      <%= f.text_field :verification_timestamp_header,
-            class: ui(:input) %>
-      <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-1">Use when the timestamp arrives in its own header instead of the signature header.</p>
-    </div>
+          <div>
+            <%= f.label :verification_timestamp_header, "Timestamp header", class: "#{ui(:label)} mb-1" %>
+            <%= f.text_field :verification_timestamp_header, class: ui(:input) %>
+            <p class="mt-1 <%= ui(:hint) %>">Use when the timestamp arrives in its own header instead of the signature header.</p>
+          </div>
 
-    <div>
-      <%= f.label :verification_payload_template, "Payload template", class: "block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1" %>
-      <%= f.text_field :verification_payload_template, placeholder: "{body}",
-            class: ui(:input) %>
-      <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-1">What gets signed. <code>{body}</code> for the raw body, or <code>{timestamp}.{body}</code> to bind the timestamp.</p>
-    </div>
+          <div>
+            <%= f.label :verification_payload_template, "Payload template", class: "#{ui(:label)} mb-1" %>
+            <%= f.text_field :verification_payload_template, placeholder: "{body}", class: ui(:input) %>
+            <p class="mt-1 <%= ui(:hint) %>">What gets signed. <code>{body}</code> for the raw body, or <code>{timestamp}.{body}</code> to bind the timestamp.</p>
+          </div>
 
-    <div>
-      <%= f.label :verification_tolerance_seconds, "Tolerance (seconds)", class: "block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1" %>
-      <%= f.number_field :verification_tolerance_seconds,
-            class: ui(:input) %>
-      <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-1">Reject requests whose timestamp is older than this. Blank means no timestamp check.</p>
-    </div>
+          <div>
+            <%= f.label :verification_tolerance_seconds, "Tolerance (seconds)", class: "#{ui(:label)} mb-1" %>
+            <%= f.number_field :verification_tolerance_seconds, class: ui(:input) %>
+            <p class="mt-1 <%= ui(:hint) %>">Reject requests whose timestamp is older than this. Blank means no timestamp check.</p>
+          </div>
 
-    <details class="text-xs text-neutral-600 dark:text-neutral-400">
-      <summary class="cursor-pointer text-neutral-500 dark:text-neutral-400">Example configurations</summary>
-      <div class="mt-2 space-y-3">
-        <div>
-          <div class="font-medium text-neutral-700 dark:text-neutral-300">Signature in the whole header value</div>
-          <p>Header <code>X-Hub-Signature-256</code>, format "Entire header value", prefix <code>sha256=</code>,
-             algorithm sha256, encoding hex, payload <code>{body}</code>.</p>
+          <details class="text-sm text-neutral-600 dark:text-neutral-400">
+            <summary class="cursor-pointer text-neutral-500 dark:text-neutral-400">Example configurations</summary>
+            <div class="mt-2 space-y-3">
+              <div>
+                <div class="font-medium text-neutral-700 dark:text-neutral-300">Signature in the whole header value</div>
+                <p>Header <code>X-Hub-Signature-256</code>, format "Entire header value", prefix <code>sha256=</code>,
+                   algorithm sha256, encoding hex, payload <code>{body}</code>.</p>
+              </div>
+              <div>
+                <div class="font-medium text-neutral-700 dark:text-neutral-300">Signature in key=value pairs</div>
+                <p>Header <code>Stripe-Signature</code>, format "Comma-separated key=value pairs", signature key <code>v1</code>,
+                   timestamp key <code>t</code>, algorithm sha256, encoding hex, payload <code>{timestamp}.{body}</code>,
+                   tolerance <code>300</code>.</p>
+              </div>
+            </div>
+          </details>
         </div>
+      </details>
+    <% end %>
+  </section>
+
+  <section class="<%= divider %>">
+    <details class="group" <%= "open" if disclose.(:dedupe) %>>
+      <summary class="<%= summary_class %>"><%= chevron %>Advanced</summary>
+      <div class="mt-2 space-y-4">
         <div>
-          <div class="font-medium text-neutral-700 dark:text-neutral-300">Signature in key=value pairs</div>
-          <p>Header <code>Stripe-Signature</code>, format "Comma-separated key=value pairs", signature key <code>v1</code>,
-             timestamp key <code>t</code>, algorithm sha256, encoding hex, payload <code>{timestamp}.{body}</code>,
-             tolerance <code>300</code>.</p>
+          <h3 class="<%= ui(:section) %>">Deduplication</h3>
+          <p class="mt-1 <%= ui(:hint) %>">
+            Optional. Drops repeats of the same event inside a time window. Leave the window blank to disable
+            deduplication and deliver every request.
+          </p>
+        </div>
+
+        <div>
+          <%= f.label :dedupe_window, "Dedupe window (seconds)", class: "#{ui(:label)} mb-1" %>
+          <%= f.number_field :dedupe_window, min: 1, max: 86400, placeholder: "Off", class: ui(:input) %>
+          <p class="mt-1 <%= ui(:hint) %>">Blank disables deduplication. Repeats of the same event within this window are marked duplicates and never delivered.</p>
+        </div>
+
+        <div>
+          <%= f.label :dedupe_key, "Identity key", class: "#{ui(:label)} mb-1" %>
+          <%= f.text_field :dedupe_key, placeholder: "X-GitHub-Delivery", class: ui(:input) %>
+          <p class="mt-1 <%= ui(:hint) %>">What makes two events the same: a header name, e.g. <code>X-GitHub-Delivery</code>, or a body path in dot syntax, e.g. <code>data.object.id</code>. Headers are checked first. Blank compares the SHA-256 of the raw body.</p>
         </div>
       </div>
     </details>
   </section>
 
-  <section class="border-t pt-4 space-y-4">
-    <div>
-      <h2 class="text-sm font-semibold text-neutral-950 dark:text-white">Deduplication</h2>
-      <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
-        Optional. Drops repeats of the same event inside a time window. Leave the window blank to disable
-        deduplication and deliver every request.
-      </p>
-    </div>
-
-    <div>
-      <%= f.label :dedupe_window, "Dedupe window (seconds)", class: "block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1" %>
-      <%= f.number_field :dedupe_window, min: 1, max: 86400, placeholder: "Off",
-            class: ui(:input) %>
-      <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-1">Blank disables deduplication. Repeats of the same event within this window are marked duplicates and never delivered.</p>
-    </div>
-
-    <div>
-      <%= f.label :dedupe_key, "Identity key", class: "block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1" %>
-      <%= f.text_field :dedupe_key, placeholder: "X-GitHub-Delivery",
-            class: ui(:input) %>
-      <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-1">What makes two events the same: a header name, e.g. <code>X-GitHub-Delivery</code>, or a body path in dot syntax, e.g. <code>data.object.id</code>. Headers are checked first. Blank compares the SHA-256 of the raw body.</p>
-    </div>
-  </section>
-
   <%= f.submit submit_label, class: ui(:button_primary) %>
+
+  <dialog data-confirm-blank-secret-target="dialog" aria-labelledby="blank-secret-heading"
+          class="m-auto max-w-sm rounded-xl p-5 elevated backdrop:bg-neutral-950/40 dark:backdrop:bg-neutral-950/60">
+    <h2 id="blank-secret-heading" class="<%= ui(:subheading) %>">No signing secret</h2>
+    <p class="mt-2 <%= ui(:hint) %>">
+      Without a secret, Hookrail can't verify that requests really come from
+      <%= Source.provider_name(preset || @source.verification_provider) || "your provider" %> — anyone who
+      discovers the ingest URL can inject events. Add one unless this source is intentionally unverified.
+    </p>
+    <div class="mt-5 flex flex-wrap justify-end gap-2">
+      <button type="button" autofocus class="<%= ui(:button_primary) %>"
+              data-action="confirm-blank-secret#cancel">Go back</button>
+      <button type="button" class="<%= ui(:button_danger) %>"
+              data-action="confirm-blank-secret#proceed">Continue without verification</button>
+    </div>
+  </dialog>
 <% end %>

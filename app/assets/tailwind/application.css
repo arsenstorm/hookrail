@@ -5,6 +5,12 @@
    that class, so the toggle and the OS setting go through one path. */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* Reserve the scrollbar track always, so short and tall pages centre on the
+   same axis instead of shifting sideways when the scrollbar appears. */
+html {
+  scrollbar-gutter: stable;
+}
+
 @theme {
   --font-sans: "InterVariable", ui-sans-serif, system-ui, sans-serif;
   --font-sans--font-feature-settings: "cv02", "cv03", "cv04", "cv11";

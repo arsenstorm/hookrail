@@ -5,10 +5,14 @@
   </div>
 
   <% if @sources.empty? || @destinations.empty? %>
-    <p class="text-neutral-600 dark:text-neutral-400 text-sm mb-4">You need at least one source and one destination first.</p>
-    <div class="flex gap-4">
-      <%= link_to "Create a source →", new_source_path, class: ui(:link) %>
-      <%= link_to "Create a destination →", new_destination_path, class: ui(:link) %>
+    <%# Two CTAs, so this can't use shared/empty_state — same card styling by hand. %>
+    <div class="rounded-xl px-6 py-12 text-center inset-ring inset-ring-neutral-950/10 dark:inset-ring-white/10">
+      <h2 class="<%= ui(:subheading) %>">Nothing to connect yet</h2>
+      <p class="mx-auto mt-1 max-w-sm <%= ui(:hint) %>">You need at least one source and one destination first.</p>
+      <div class="mt-5 flex flex-wrap items-center justify-center gap-4">
+        <%= link_to "Create a source →", new_source_path, class: ui(:link) %>
+        <%= link_to "Create a destination →", new_destination_path, class: ui(:link) %>
+      </div>
     </div>
   <% else %>
     <%= form_with model: @connection, class: "space-y-4 max-w-md" do |f| %>
@@ -20,12 +24,12 @@
         </div>
       <% end %>
       <div>
-        <%= f.label :source_id, "Source", class: "block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1" %>
-        <%= f.collection_select :source_id, @sources, :id, :name, {}, class: ui(:input) %>
+        <%= f.label :source_id, "Source", class: "#{ui(:label)} mb-1" %>
+        <%= f.collection_select :source_id, @sources, :id, :name, {}, class: "#{ui(:select)} w-full" %>
       </div>
       <div>
-        <%= f.label :destination_id, "Destination", class: "block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1" %>
-        <%= f.collection_select :destination_id, @destinations, :id, :name, {}, class: ui(:input) %>
+        <%= f.label :destination_id, "Destination", class: "#{ui(:label)} mb-1" %>
+        <%= f.collection_select :destination_id, @destinations, :id, :name, {}, class: "#{ui(:select)} w-full" %>
       </div>
       <%= f.submit "Create connection", class: ui(:button_primary) %>
     <% end %>
