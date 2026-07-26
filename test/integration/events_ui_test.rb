@@ -37,7 +37,7 @@ class EventsUiTest < ActionDispatch::IntegrationTest
 
   test "unauthenticated events index redirects to login" do
     get events_path
-    assert_redirected_to login_path
+    assert_redirected_to sign_in_path
   end
 
   test "index lists the current project's events with delivery summary" do
@@ -48,6 +48,11 @@ class EventsUiTest < ActionDispatch::IntegrationTest
     assert_select "td", text: "GitHub"
     assert_match "1/1 delivered", response.body
     assert_select "a[href=?]", event_path(event)
+    # The received cell is a <time> nested in the row link: the link stays the
+    # only tab stop, and the ISO instant is there for the client to localise.
+    assert_select "a[href=?] time[datetime=?]", event_path(event),
+                  event.received_at.utc.iso8601, text: "Just now"
+    assert_select "a[href=?] time[tabindex]", event_path(event), count: 0
   end
 
   test "show renders request details and delivery attempts" do

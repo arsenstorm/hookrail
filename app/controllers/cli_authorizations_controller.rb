@@ -14,10 +14,10 @@ class CliAuthorizationsController < ApplicationController
 
     if params[:decision] == "deny"
       authorization.update!(status: :denied)
-      redirect_to root_path, notice: "CLI access denied."
+      redirect_to dashboard_path, notice: "CLI access denied."
     else
       authorization.update!(status: :approved, user: Current.user, organization: Current.organization)
-      redirect_to root_path, notice: "CLI authorized for #{Current.organization.name} — return to your terminal."
+      redirect_to dashboard_path, notice: "CLI authorized for #{Current.organization.name} — return to your terminal."
     end
   end
 end

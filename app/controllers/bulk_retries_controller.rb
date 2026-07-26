@@ -7,7 +7,7 @@ class BulkRetriesController < ApplicationController
   # job if filtered sets grow past a few thousand deliveries.
   def create
     set_event_filters
-    pairs = Attempt.retryable_for(filtered_events).pluck(:event_id, :connection_id)
+    pairs = Attempt.retryable_for(selected_events).pluck(:event_id, :connection_id)
     enqueued = pairs.count do |event_id, connection_id|
       Attempt.claim_retry!(event_id: event_id, connection_id: connection_id)
     end

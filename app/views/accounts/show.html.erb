@@ -7,8 +7,8 @@
 %>
 <div class="mx-auto w-full max-w-2xl py-16">
   <div class="mb-6 flex items-center justify-between gap-4">
-    <h1 class="text-2xl font-semibold tracking-tight text-balance text-neutral-950 dark:text-white">Account settings</h1>
-    <%= link_to "Dashboard", root_path, class: "text-sm text-neutral-500 transition-colors duration-150 ease-out hover:text-neutral-950 dark:text-neutral-400 dark:hover:text-white" %>
+    <h1 class="<%= ui(:heading) %>">Account settings</h1>
+    <%= link_to "Security", security_account_path, class: "text-sm text-neutral-500 hover:text-neutral-950 dark:text-neutral-400 dark:hover:text-white" %>
   </div>
 
   <div class="flex items-center gap-4 rounded-xl elevated px-5 py-4">
@@ -40,12 +40,12 @@
       <dt class="<%= label %>">GitHub</dt>
       <dd class="<%= value %>">
         <%= link_to "@#{user.github_login}", "https://github.com/#{user.github_login}",
-              class: "text-oxblood-700 transition-colors duration-150 ease-out hover:text-oxblood-900 dark:text-oxblood-300 dark:hover:text-oxblood-200" %>
+              class: "text-oxblood-700 hover:text-oxblood-900 dark:text-oxblood-300 dark:hover:text-oxblood-200" %>
       </dd>
     </div>
     <div class="<%= row %>">
       <dt class="<%= label %>">Joined</dt>
-      <dd class="<%= value %>"><%= user.created_at.to_date.to_fs(:long) %></dd>
+      <dd class="<%= value %>"><%= timestamp_tag(user.created_at) %></dd>
     </div>
   </dl>
   <p class="mt-2 text-xs text-neutral-500 dark:text-neutral-400">

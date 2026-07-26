@@ -55,6 +55,12 @@ class IssuesUiTest < ActionDispatch::IntegrationTest
     assert_match "Webhook quarantined", response.body
     assert_no_match "Delivery failure", response.body
 
+    # No pill links here anymore, but old bookmarks still filter.
+    get issues_path(status: "open")
+    assert_response :ok
+    assert_match "Delivery failure", response.body
+    assert_no_match "Webhook quarantined", response.body
+
     get issues_path(status: "all")
     assert_response :ok
     assert_match "Delivery failure", response.body
@@ -122,7 +128,7 @@ class IssuesUiTest < ActionDispatch::IntegrationTest
     assert_response :ok
 
     patch acknowledge_issue_path(issue)
-    assert_redirected_to root_path
+    assert_redirected_to dashboard_path
     follow_redirect!
     assert_match "You don&#39;t have permission to do that.", response.body
     assert issue.reload.status_open?
@@ -159,7 +165,7 @@ class IssuesUiTest < ActionDispatch::IntegrationTest
 
     sign_in_as!(owner)
 
-    get root_path
+    get dashboard_path
     assert_response :ok
     assert_select "a[href=?]", issues_path, text: "Issues"
   end

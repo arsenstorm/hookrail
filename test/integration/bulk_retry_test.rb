@@ -75,6 +75,17 @@ class BulkRetryTest < ActionDispatch::IntegrationTest
     end
   end
 
+  test "selecting the page offers the wider filtered set as an escape hatch" do
+    sign_in!
+    source, connection = build_connection!(current_project)
+    (EventsController::PAGE_SIZE + 1).times { make_event!(source, connection, status: :failed) }
+
+    get events_path
+    assert_response :ok
+    assert_match "Select all #{EventsController::PAGE_SIZE + 1} matching these filters", response.body
+    assert_match %(name="all_filtered"), response.body
+  end
+
   test "does not double-enqueue a pending delivery" do
     sign_in!
     source, connection = build_connection!(current_project)

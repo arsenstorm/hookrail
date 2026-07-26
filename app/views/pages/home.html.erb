@@ -1,0 +1,311 @@
+<% content_for :title, "Hookrail — webhooks that arrive" %>
+
+<%
+  # Shared bits: one checked-box glyph for every chip, one hairline, one rule.
+  checkbox = capture do
+%><svg viewBox="0 0 16 16" class="size-3.5 shrink-0 fill-current" aria-hidden="true"><path fill-rule="evenodd" d="M4.5 2A2.5 2.5 0 0 0 2 4.5v7A2.5 2.5 0 0 0 4.5 14h7a2.5 2.5 0 0 0 2.5-2.5v-7A2.5 2.5 0 0 0 11.5 2h-7Zm6.53 3.47a.75.75 0 0 1 0 1.06l-3.5 3.5a.75.75 0 0 1-1.06 0l-1.5-1.5a.75.75 0 1 1 1.06-1.06l.97.97 2.97-2.97a.75.75 0 0 1 1.06 0Z" clip-rule="evenodd"/></svg><%
+  end
+  hairline = "border-neutral-950/10 dark:border-white/10"
+  chip = "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium text-neutral-600 inset-ring inset-ring-neutral-950/15 dark:text-neutral-300 dark:inset-ring-white/15"
+  section_heading = "mt-4 text-3xl font-semibold tracking-tight text-balance sm:text-4xl"
+  section_sub = "mx-auto mt-4 max-w-[65ch] text-base/7 text-pretty text-neutral-600 dark:text-neutral-400"
+  focus_ring = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-950 dark:focus-visible:outline-white"
+  nav_links = [ [ "How it works", "#how-it-works" ], [ "Features", "#features" ], [ "CLI", "#cli" ] ]
+  # Mock screenshots are pictures of the app: light in both themes, inert to a11y.
+  mock_chrome = "select-none pointer-events-none overflow-hidden rounded-xl bg-white text-neutral-950 ring-1 ring-neutral-950/10"
+%>
+
+<header class="surface border-b <%= hairline %>">
+  <div class="mx-auto flex max-w-5xl items-center justify-between gap-4 px-5 py-4 lg:px-8">
+    <span class="flex items-center gap-2">
+      <%= render "shared/logo_mark", class: "size-6 text-oxblood-700 dark:text-oxblood-500" %>
+      <span class="text-base font-semibold tracking-tight">Hookrail</span>
+    </span>
+
+    <nav class="flex items-center gap-6 max-sm:hidden" aria-label="Sections">
+      <% nav_links.each do |label, anchor| %>
+        <a href="<%= anchor %>" class="<%= ui(:muted_link) %> <%= focus_ring %> rounded-md transition-colors duration-150"><%= label %></a>
+      <% end %>
+    </nav>
+
+    <div class="flex items-center gap-4">
+      <% unless current_user %>
+        <%= link_to "Sign in", sign_in_path,
+              class: "#{ui(:muted_link)} #{focus_ring} rounded-md transition-colors duration-150 max-sm:hidden" %>
+      <% end %>
+      <%= render "pages/cta" %>
+    </div>
+  </div>
+</header>
+
+<%# Full-bleed brand band. Fixed oxblood in both themes, like a terminal block. %>
+<section class="relative isolate overflow-hidden bg-oxblood-900 px-5 pt-16 pb-32 text-center sm:pt-24 sm:pb-40 lg:px-8">
+  <span aria-hidden="true" class="blueprint-grid pointer-events-none absolute inset-0 select-none"></span>
+  <svg aria-hidden="true" class="pointer-events-none absolute inset-0 size-full select-none" fill="none">
+    <defs>
+      <pattern id="hero-scatter" width="320" height="320" patternUnits="userSpaceOnUse">
+        <g fill="rgb(255 255 255 / 0.16)">
+          <rect x="42" y="70" width="4" height="4"/>
+          <rect x="218" y="34" width="4" height="4"/>
+          <rect x="130" y="196" width="4" height="4"/>
+          <rect x="286" y="242" width="4" height="4"/>
+          <rect x="70" y="284" width="4" height="4"/>
+        </g>
+        <g stroke="rgb(255 255 255 / 0.18)" stroke-width="1">
+          <path d="M162 88h12M168 82v12"/>
+          <path d="M18 178h12M24 172v12"/>
+          <path d="M250 150h12M256 144v12"/>
+          <path d="M198 296h12M204 290v12"/>
+        </g>
+      </pattern>
+    </defs>
+    <rect width="100%" height="100%" fill="url(#hero-scatter)"/>
+  </svg>
+
+  <div class="relative mx-auto max-w-3xl">
+    <span class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium text-white/85 inset-ring inset-ring-white/15">
+      <%= checkbox %>Receive. Verify. Deliver.
+    </span>
+
+    <h1 class="mt-6 text-4xl font-semibold tracking-tight text-balance text-white sm:text-5xl lg:text-6xl">Webhooks that arrive.</h1>
+
+    <p class="mx-auto mt-5 max-w-[60ch] text-base/7 text-pretty text-white/80 sm:text-lg/8">
+      Receive webhooks, verify signatures, transform payloads, and deliver them to your endpoints — with retries until each one lands.
+    </p>
+
+    <div class="mt-9 flex flex-wrap items-center justify-center gap-3">
+      <%= render "pages/cta",
+            variant: "inline-flex cursor-pointer items-center justify-center rounded-md bg-white font-medium text-neutral-950 hover:bg-white/90 focus-visible:outline-white" %>
+      <a href="#how-it-works"
+         class="inline-flex cursor-pointer items-center justify-center rounded-md px-4 py-2 text-sm/6 font-medium text-white inset-ring inset-ring-white/30 transition-colors duration-150 hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
+        See how it works
+      </a>
+    </div>
+  </div>
+</section>
+
+<%# Everything below the band lives between two continuous hairline rails. %>
+<div class="mx-auto max-w-5xl border-x <%= hairline %>">
+  <%# relative z-10: the hero above is position:relative, so it out-paints an
+      in-flow sibling child. Positioning the mock is what puts it on top. %>
+  <div class="relative z-10 -mt-24 px-5 sm:-mt-32 lg:px-8">
+    <div role="img"
+         aria-label="Screenshot of the Hookrail events screen: a sidebar and a table of received webhooks, each row showing the ingest path, the event type, and a delivery status of delivered, retrying or failed."
+         class="<%= mock_chrome %> shadow-xl">
+      <div class="flex items-center gap-1.5 border-b border-neutral-950/10 px-3 py-2.5">
+        <span class="size-2.5 rounded-full bg-neutral-950/15"></span>
+        <span class="size-2.5 rounded-full bg-neutral-950/15"></span>
+        <span class="size-2.5 rounded-full bg-neutral-950/15"></span>
+      </div>
+      <div class="flex h-72 sm:h-80">
+        <div class="w-44 shrink-0 border-r border-neutral-950/10 p-3 max-sm:hidden">
+          <span class="flex items-center gap-2 px-2 pb-3">
+            <%= render "shared/logo_mark", class: "size-5 text-oxblood-700" %>
+            <span class="text-sm font-semibold tracking-tight">Hookrail</span>
+          </span>
+          <% [ [ :dashboard, "Dashboard", false ], [ :events, "Events", true ], [ :issues, "Issues", false ],
+               [ :sources, "Sources", false ], [ :destinations, "Destinations", false ] ].each do |icon, label, active| %>
+            <span class="mt-0.5 flex items-center gap-2 rounded-md px-2 py-1.5 text-xs font-medium <%= active ? "bg-oxblood-700/10 text-oxblood-900" : "text-neutral-600" %>">
+              <%= nav_icon(icon) %><%= label %>
+            </span>
+          <% end %>
+        </div>
+
+        <div class="min-w-0 flex-1 p-4 sm:p-5">
+          <p class="text-sm font-semibold">Events</p>
+          <p class="mt-1 text-xs text-neutral-500">Everything Acme has received, newest first.</p>
+          <div class="mt-4 divide-y divide-neutral-950/5 border-t border-neutral-950/10">
+            <%
+              rows = [
+                [ "k3Ax7pQr", "invoice.payment_succeeded", "delivered", "bg-emerald-600/10 text-emerald-800", "12:04:21" ],
+                [ "k3Ax7pQr", "customer.subscription.updated", "retrying", "bg-amber-500/15 text-amber-800", "12:03:58" ],
+                [ "9Fw2mTdb", "checkout.session.completed", "delivered", "bg-emerald-600/10 text-emerald-800", "12:03:11" ],
+                [ "k3Ax7pQr", "invoice.payment_failed", "failed", "bg-red-600/10 text-red-800", "12:01:47" ],
+                [ "9Fw2mTdb", "charge.refunded", "delivered", "bg-emerald-600/10 text-emerald-800", "11:58:02" ]
+              ]
+            %>
+            <% rows.each do |token, type, status, tone, time| %>
+              <div class="flex items-center gap-3 py-2.5 text-xs">
+                <span class="min-w-0 flex-1 truncate font-mono text-neutral-600">
+                  <span class="text-neutral-400">POST</span> /ingest/<%= token %>
+                </span>
+                <span class="min-w-0 flex-1 truncate max-sm:hidden"><%= type %></span>
+                <span class="<%= ui(:badge) %> <%= tone %>"><%= status %></span>
+                <span class="font-mono text-neutral-400 max-sm:hidden"><%= time %></span>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <section id="how-it-works" class="scroll-mt-16 px-5 py-20 text-center lg:px-8">
+    <span class="<%= chip %>"><%= checkbox %>How it works</span>
+    <h2 class="<%= section_heading %>">One hop between your provider and your app</h2>
+    <p class="<%= section_sub %>">
+      Point a provider at a Hookrail ingest URL. Everything after that is configuration, not code.
+    </p>
+
+    <%# Diagram is plain DOM so it reflows on mobile and inherits both themes. %>
+    <div role="img"
+         aria-label="Flow diagram: your provider sends a webhook to Hookrail, which verifies, filters, transforms and retries it, then delivers it to your app."
+         class="mt-10 flex flex-col items-stretch gap-3 select-none pointer-events-none sm:flex-row sm:items-center sm:justify-center">
+      <div class="rounded-xl px-4 py-3 text-center inset-ring inset-ring-neutral-950/10 sm:w-44 dark:inset-ring-white/10">
+        <p class="text-sm font-medium">Your provider</p>
+        <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">sends a webhook</p>
+      </div>
+
+      <span aria-hidden="true" class="self-center text-neutral-400 dark:text-neutral-500">
+        <span class="sm:hidden">↓</span><span class="hidden sm:inline">→</span>
+      </span>
+
+      <div class="rounded-xl bg-oxblood-700/5 px-4 py-3 text-center inset-ring inset-ring-oxblood-700/20 dark:bg-oxblood-500/10 dark:inset-ring-oxblood-500/25">
+        <p class="text-sm font-medium">Hookrail</p>
+        <div class="mt-2 flex flex-wrap justify-center gap-1.5">
+          <% %w[verify filter transform retry].each do |step| %>
+            <span class="<%= ui(:badge) %> <%= ui(:badge_neutral) %>"><%= step %></span>
+          <% end %>
+        </div>
+      </div>
+
+      <span aria-hidden="true" class="self-center text-neutral-400 dark:text-neutral-500">
+        <span class="sm:hidden">↓</span><span class="hidden sm:inline">→</span>
+      </span>
+
+      <div class="rounded-xl px-4 py-3 text-center inset-ring inset-ring-neutral-950/10 sm:w-44 dark:inset-ring-white/10">
+        <p class="text-sm font-medium">Your app</p>
+        <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">gets one clean call</p>
+      </div>
+    </div>
+  </section>
+
+  <div aria-hidden="true" class="hatch pointer-events-none h-10 border-y select-none <%= hairline %>"></div>
+
+  <section id="features" class="scroll-mt-16 pt-20">
+    <div class="px-5 text-center lg:px-8">
+      <span class="<%= chip %>"><%= checkbox %>Why Hookrail</span>
+      <h2 class="<%= section_heading %>">What you get</h2>
+      <p class="<%= section_sub %>">
+        The parts you would otherwise write twice: retries, verification, routing, and somewhere to look when one fails.
+      </p>
+    </div>
+
+    <%# gap-px over a hairline background: cells share one line instead of stacking two. %>
+    <div class="mt-12 grid grid-cols-1 gap-px border-y bg-neutral-950/10 bg-clip-padding sm:grid-cols-2 dark:bg-white/10 <%= hairline %>">
+      <%
+        features = [
+          [ :events, "bg-oxblood-700 dark:bg-oxblood-600", "Automatic retries & replays",
+            "Failed deliveries retry on a backoff schedule you set. Replay any event by hand, one at a time or in bulk." ],
+          [ :issues, "bg-oxblood-700 dark:bg-oxblood-600", "Issues with Slack & Discord alerts",
+            "Repeated failures open a persistent issue you acknowledge and resolve. Alerts post to a Slack or Discord webhook." ],
+          [ :shield, "bg-emerald-700 dark:bg-emerald-600", "Signature verification",
+            "Reject payloads the sender didn’t sign. Stripe has a preset; anything else configures by header, format, and key." ],
+          [ :connections, "bg-oxblood-700 dark:bg-oxblood-600", "Filters & transformations",
+            "Send a destination only the events it cares about, and reshape the payload before it goes out." ],
+          [ :lock, "bg-oxblood-700 dark:bg-oxblood-600", "Quarantine",
+            "Webhooks that fail verification are held instead of dropped, so you can see what arrived and why it was rejected." ],
+          [ :key, "bg-neutral-950 dark:bg-white dark:text-neutral-950", "Multi-project with a REST API",
+            "Keep environments and teams in separate projects. Everything in the UI is in the REST API too, behind an API key." ]
+        ]
+      %>
+      <% features.each do |icon, tone, title, body| %>
+        <div class="canvas px-5 py-8 lg:px-8">
+          <span class="flex size-8 items-center justify-center rounded-md text-white <%= tone %>"><%= nav_icon(icon) %></span>
+          <h3 class="mt-4 text-sm font-semibold text-balance"><%= title %></h3>
+          <p class="mt-1.5 max-w-[65ch] text-sm/6 text-pretty text-neutral-600 dark:text-neutral-400"><%= body %></p>
+        </div>
+      <% end %>
+
+      <div id="cli" class="canvas scroll-mt-16 px-5 py-8 sm:col-span-2 lg:px-8">
+        <span class="flex size-8 items-center justify-center rounded-md bg-neutral-950 text-white dark:bg-white dark:text-neutral-950"><%= nav_icon(:sources) %></span>
+        <h3 class="mt-4 text-sm font-semibold text-balance">Test against your laptop</h3>
+        <p class="mt-1.5 max-w-[65ch] text-sm/6 text-pretty text-neutral-600 dark:text-neutral-400">
+          The CLI signs in from the terminal and streams live deliveries to a local port.
+        </p>
+
+        <%# Terminals read as terminals: dark in both themes, on purpose. %>
+        <div class="mt-5 overflow-x-auto rounded-xl bg-neutral-950 p-4 font-mono text-sm text-neutral-200 inset-ring inset-ring-white/10">
+          <div class="flex gap-1.5 pb-4" aria-hidden="true">
+            <span class="size-2.5 rounded-full bg-white/15"></span>
+            <span class="size-2.5 rounded-full bg-white/15"></span>
+            <span class="size-2.5 rounded-full bg-white/15"></span>
+          </div>
+          <pre><span class="text-neutral-500">$</span> hookrail login
+<span class="text-emerald-400">✓</span> Logged in to Acme
+<span class="text-neutral-500">$</span> hookrail listen 3000 --source stripe
+stripe → http://localhost:3000
+Waiting for events… (Ctrl-C to stop)</pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="grid grid-cols-1 items-center gap-10 px-5 py-20 lg:grid-cols-2 lg:gap-12 lg:px-8">
+    <div>
+      <span class="<%= chip %>"><%= checkbox %>When one fails</span>
+      <h2 class="mt-4 text-3xl font-semibold tracking-tight text-balance sm:text-4xl">You find out before your customer does</h2>
+      <p class="mt-4 max-w-[65ch] text-base/7 text-pretty text-neutral-600 dark:text-neutral-400">
+        Every attempt keeps its response code and body, so a failure is something you can read rather than guess at. Statuses mean one thing across the whole app.
+      </p>
+      <ul class="mt-6 flex flex-col items-start gap-2">
+        <% [ [ "bg-emerald-600 dark:bg-emerald-400", "Green means delivered" ],
+             [ "bg-amber-500 dark:bg-amber-400", "Amber means retrying" ],
+             [ "bg-red-600 dark:bg-red-400", "Red means failed" ] ].each do |dot, label| %>
+          <li class="inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm inset-ring inset-ring-neutral-950/10 dark:inset-ring-white/10">
+            <span aria-hidden="true" class="size-2 rounded-full <%= dot %>"></span><%= label %>
+          </li>
+        <% end %>
+      </ul>
+    </div>
+
+    <div role="img"
+         aria-label="Screenshot of a Hookrail delivery list: four attempts to a destination endpoint, each with a status dot, a response code and a timestamp."
+         class="<%= mock_chrome %>">
+      <div class="flex items-center justify-between border-b border-neutral-950/10 px-4 py-3">
+        <p class="text-sm font-semibold">Deliveries</p>
+        <span class="font-mono text-xs text-neutral-400">https://acme.test/hooks</span>
+      </div>
+      <div class="divide-y divide-neutral-950/5">
+        <% [ [ "bg-emerald-600", "invoice.payment_succeeded", "200", "12:04:21" ],
+             [ "bg-amber-500", "customer.subscription.updated", "503 · retry 2 of 6", "12:03:58" ],
+             [ "bg-red-600", "invoice.payment_failed", "410 · gave up", "12:01:47" ],
+             [ "bg-emerald-600", "charge.refunded", "200", "11:58:02" ] ].each do |dot, type, detail, time| %>
+          <div class="flex items-center gap-3 px-4 py-3">
+            <span class="size-2 shrink-0 rounded-full <%= dot %>"></span>
+            <span class="min-w-0 flex-1">
+              <span class="block truncate text-xs font-medium"><%= type %></span>
+              <span class="mt-0.5 block truncate font-mono text-xs text-neutral-500"><%= detail %></span>
+            </span>
+            <span class="shrink-0 font-mono text-xs text-neutral-400"><%= time %></span>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </section>
+
+  <div aria-hidden="true" class="hatch pointer-events-none h-10 border-y select-none <%= hairline %>"></div>
+
+  <section class="px-5 py-20 text-center lg:px-8">
+    <span class="<%= chip %>"><%= checkbox %>One minute of setup</span>
+    <h2 class="<%= section_heading %>">Start receiving webhooks</h2>
+    <p class="<%= section_sub %>">
+      Sign in with GitHub. A source and an ingest URL take about a minute.
+    </p>
+    <div class="mt-8 flex justify-center">
+      <%= render "pages/cta" %>
+    </div>
+  </section>
+
+  <footer class="flex flex-col gap-4 border-t px-5 py-8 sm:flex-row sm:items-center sm:justify-between lg:px-8 <%= hairline %>">
+    <span class="flex items-center gap-2 text-sm text-neutral-500 dark:text-neutral-400">
+      <%= render "shared/logo_mark", class: "size-5" %>
+      © <%= Date.current.year %> Hookrail
+    </span>
+    <% if current_user %>
+      <%= link_to "Dashboard", dashboard_path, class: ui(:muted_link) %>
+    <% else %>
+      <%= link_to "Sign in", sign_in_path, class: ui(:muted_link) %>
+    <% end %>
+  </footer>
+</div>

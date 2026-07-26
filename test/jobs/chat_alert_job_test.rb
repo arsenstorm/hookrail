@@ -90,7 +90,7 @@ class ChatAlertJobTest < ActiveSupport::TestCase
     [ slack_text, discord_text ].each do |text|
       assert_includes text, "New issue: Delivery failure"
       assert_includes text, project.name
-      assert_includes text, "http://example.com/issues/"
+      assert_includes text, "http://example.com/app/issues/"
     end
   end
 end

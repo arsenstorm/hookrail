@@ -25,8 +25,6 @@
   needs_attention = @unhealthy_connections.any? || @open_issues_count.positive?
   card = "rounded-xl elevated"
   th_classes = "py-2.5 font-medium whitespace-nowrap"
-  # The canvas draws its axis in its own text color, so the theme flips with it.
-  chart_classes = "mt-3 block h-40 w-full text-neutral-950/20 dark:text-white/20"
   # Scrollable tables bleed to the page edge until the container is wide enough
   # to hold them; the padding here mirrors the page container's.
   scroller = "-mx-5 -my-2 overflow-x-auto whitespace-nowrap @4xl:mx-0"
@@ -36,8 +34,8 @@
   sortable_th = ->(label, key) do
     active = @sort == key
     tag.th(class: "#{th_classes} text-right", "aria-sort": (active ? "descending" : nil)) do
-      link_to root_path(window: @metrics.window, sort: key),
-              class: "-my-2.5 inline-flex items-center py-2.5 transition-colors duration-150 ease-out #{active ? "text-neutral-950 dark:text-white" : "text-neutral-500 hover:text-neutral-950 dark:text-neutral-400 dark:hover:text-white"}" do
+      link_to dashboard_path(window: @metrics.window, sort: key),
+              class: "-my-2.5 inline-flex items-center py-2.5 #{active ? "text-neutral-950 dark:text-white" : "text-neutral-500 hover:text-neutral-950 dark:text-neutral-400 dark:hover:text-white"}" do
         safe_join([ label, active ? " ↓" : "" ])
       end
     end
@@ -50,7 +48,7 @@
 <div class="@container">
   <div class="flex flex-wrap items-end justify-between gap-4">
     <div>
-      <h1 class="text-2xl font-semibold tracking-tight text-balance text-neutral-950 dark:text-white">Dashboard</h1>
+      <h1 class="<%= ui(:heading) %>">Dashboard</h1>
       <p class="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
         Delivery health for <%= Current.project.name %> over <%= window_phrase %>.
       </p>
@@ -60,10 +58,10 @@
       <% windows.each do |w, title| %>
         <% active = @metrics.window == w %>
         <%# before: pseudo-element grows the tap target to 48px without changing the pill. %>
-        <%= link_to w, root_path(window: w, sort: @sort),
+        <%= link_to w, dashboard_path(window: w, sort: @sort),
               title: title,
               "aria-current": (active ? "page" : nil),
-              class: "relative rounded-sm px-3 py-1.5 text-sm font-medium transition-colors duration-150 ease-out before:absolute before:inset-x-0 before:-inset-y-2 #{active ? "bg-oxblood-700 text-white dark:bg-oxblood-600" : "text-neutral-600 hover:bg-neutral-950/5 hover:text-neutral-950 dark:text-neutral-400 dark:hover:bg-white/5 dark:hover:text-white"}" %>
+              class: "relative rounded-sm px-3 py-1.5 text-sm font-medium before:absolute before:inset-x-0 before:-inset-y-2 #{active ? "bg-oxblood-700 text-white dark:bg-oxblood-600" : "text-neutral-600 hover:bg-neutral-950/5 hover:text-neutral-950 dark:text-neutral-400 dark:hover:bg-white/5 dark:hover:text-white"}" %>
       <% end %>
     </nav>
   </div>
@@ -80,17 +78,8 @@
   <div class="mt-6 grid gap-6 @4xl:grid-cols-2">
     <section class="<%= card %> px-5 py-4">
       <h2 class="<%= section_heading %>">Volume</h2>
-      <canvas class="<%= chart_classes %>"
-              role="img"
-              aria-label="Events received over <%= window_phrase %>, <%= number_with_delimiter(@totals[:events_received]) %> in total."
-              data-controller="dither-chart"
-              data-dither-chart-type-value="area"
-              data-dither-chart-labels-value="<%= labels.to_json %>"
-              data-dither-chart-series-value="<%= events_series.to_json %>"></canvas>
-      <div class="mt-1 flex justify-between text-xs text-neutral-500 tabular-nums dark:text-neutral-400">
-        <span><%= labels.first %></span>
-        <span><%= labels.last %></span>
-      </div>
+      <%= render "dashboard/chart", type: "area", labels: labels, series: events_series,
+            aria_label: "Events received over #{window_phrase}, #{number_with_delimiter(@totals[:events_received])} in total." %>
     </section>
 
     <section class="<%= card %> px-5 py-4">
@@ -105,17 +94,8 @@
           <% end %>
         </ul>
       </div>
-      <canvas class="<%= chart_classes %>"
-              role="img"
-              aria-label="Delivery outcomes over <%= window_phrase %>: <%= number_with_delimiter(@totals[:delivered]) %> delivered, <%= number_with_delimiter(@totals[:failed]) %> failed, <%= number_with_delimiter(@totals[:pending]) %> pending."
-              data-controller="dither-chart"
-              data-dither-chart-type-value="bars"
-              data-dither-chart-labels-value="<%= labels.to_json %>"
-              data-dither-chart-series-value="<%= delivery_series.to_json %>"></canvas>
-      <div class="mt-1 flex justify-between text-xs text-neutral-500 tabular-nums dark:text-neutral-400">
-        <span><%= labels.first %></span>
-        <span><%= labels.last %></span>
-      </div>
+      <%= render "dashboard/chart", type: "bars", labels: labels, series: delivery_series,
+            aria_label: "Delivery outcomes over #{window_phrase}: #{number_with_delimiter(@totals[:delivered])} delivered, #{number_with_delimiter(@totals[:failed])} failed, #{number_with_delimiter(@totals[:pending])} pending." %>
     </section>
   </div>
 
@@ -177,7 +157,7 @@
                   <%= connection.source.name %> <%= to_arrow %> <%= connection.destination.name %>
                 </p>
                 <p class="mt-0.5 text-sm text-red-700 dark:text-red-300">
-                  Failing for <%= time_ago_in_words(connection.unhealthy_since) %>
+                  Failing since <%= timestamp_tag(connection.unhealthy_since) %>
                 </p>
               </li>
             <% end %>
@@ -188,14 +168,14 @@
       <div>
         <div class="flex items-baseline justify-between gap-4">
           <h2 class="<%= section_heading %>">Recent events</h2>
-          <%= link_to "View all", events_path, class: "text-sm font-medium text-oxblood-700 transition-colors duration-150 ease-out hover:text-oxblood-900 dark:text-oxblood-300 dark:hover:text-oxblood-200" %>
+          <%= link_to "View all", events_path, class: "text-sm font-medium text-oxblood-700 hover:text-oxblood-900 dark:text-oxblood-300 dark:hover:text-oxblood-200" %>
         </div>
         <% if @recent_events.any? %>
           <ul role="list" class="mt-2 divide-y divide-neutral-950/5 dark:divide-white/5">
             <% @recent_events.each do |event| %>
               <li class="flex items-center justify-between gap-4 py-2.5">
                 <p class="min-w-0 truncate text-sm font-medium text-neutral-950 dark:text-white"><%= event.source.name %></p>
-                <p class="shrink-0 text-sm text-neutral-500 dark:text-neutral-400"><%= time_ago_in_words(event.received_at) %> ago</p>
+                <p class="shrink-0 text-sm text-neutral-500 dark:text-neutral-400"><%= timestamp_tag(event.received_at) %></p>
               </li>
             <% end %>
           </ul>

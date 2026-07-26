@@ -1,37 +1,37 @@
 <% content_for :title, "Event ##{@event.id}" %>
-<div class="w-full max-w-4xl mx-auto py-16">
-  <%= link_to "← Events", events_path, class: "text-sm text-gray-500 hover:text-gray-700" %>
-  <h1 class="text-2xl font-semibold mt-2 mb-6 flex items-center gap-3">
+<div>
+  <%= link_to "← Events", events_path, class: ui(:muted_link) %>
+  <h1 class="mt-2 mb-6 flex items-center gap-3 text-2xl font-semibold tracking-tight text-neutral-950 dark:text-white">
     <%= @event.http_method %> <%= @event.path %>
     <% if @event.duplicate? %>
-      <span class="rounded-full bg-gray-100 text-gray-600 px-2 py-0.5 text-xs font-normal">duplicate</span>
+      <span class="rounded-full bg-neutral-950/5 dark:bg-white/5 text-neutral-600 dark:text-neutral-400 px-2 py-0.5 text-xs font-normal">duplicate</span>
     <% end %>
   </h1>
 
   <section class="mb-8">
-    <h2 class="text-sm font-semibold text-gray-500 uppercase mb-2">Request</h2>
-    <dl class="text-sm grid grid-cols-[8rem_1fr] gap-y-1">
-      <dt class="text-gray-500">Received</dt><dd><%= @event.received_at.strftime("%Y-%m-%d %H:%M:%S") %></dd>
-      <dt class="text-gray-500">Method</dt><dd><%= @event.http_method %></dd>
-      <dt class="text-gray-500">Path</dt><dd><%= @event.path %></dd>
-      <dt class="text-gray-500">Query</dt><dd><%= @event.query_string %></dd>
+    <h2 class="mb-2 text-sm font-semibold text-neutral-950 dark:text-white">Request</h2>
+    <dl class="grid grid-cols-[8rem_1fr] gap-y-1 text-sm text-neutral-950 dark:text-white">
+      <dt class="text-neutral-500 dark:text-neutral-400">Received</dt><dd><%= timestamp_tag(@event.received_at) %></dd>
+      <dt class="text-neutral-500 dark:text-neutral-400">Method</dt><dd><%= @event.http_method %></dd>
+      <dt class="text-neutral-500 dark:text-neutral-400">Path</dt><dd class="break-all"><%= @event.path %></dd>
+      <dt class="text-neutral-500 dark:text-neutral-400">Query</dt><dd class="break-all"><%= @event.query_string %></dd>
     </dl>
   </section>
 
   <section class="mb-8">
-    <h2 class="text-sm font-semibold text-gray-500 uppercase mb-2">Headers</h2>
-    <pre class="bg-gray-50 rounded p-3 text-xs overflow-x-auto"><%= JSON.pretty_generate(@event.headers) %></pre>
+    <h2 class="mb-2 text-sm font-semibold text-neutral-950 dark:text-white">Headers</h2>
+    <pre class="overflow-x-auto rounded-lg bg-neutral-950/5 p-3 text-xs text-neutral-800 dark:bg-white/5 dark:text-neutral-200"><%= JSON.pretty_generate(@event.headers) %></pre>
   </section>
 
   <section class="mb-8">
-    <h2 class="text-sm font-semibold text-gray-500 uppercase mb-2">Body</h2>
-    <pre class="bg-gray-50 rounded p-3 text-xs overflow-x-auto"><%= @event.body %></pre>
+    <h2 class="mb-2 text-sm font-semibold text-neutral-950 dark:text-white">Body</h2>
+    <pre class="overflow-x-auto rounded-lg bg-neutral-950/5 p-3 text-xs text-neutral-800 dark:bg-white/5 dark:text-neutral-200"><%= @event.body %></pre>
   </section>
 
   <section>
-    <h2 class="text-sm font-semibold text-gray-500 uppercase mb-2">Delivery attempts</h2>
+    <h2 class="mb-2 text-sm font-semibold text-neutral-950 dark:text-white">Delivery attempts</h2>
     <% if @event.attempts.empty? %>
-      <p class="text-gray-500 text-sm">No delivery attempts.</p>
+      <p class="text-neutral-500 dark:text-neutral-400 text-sm">No delivery attempts.</p>
     <% else %>
       <div class="space-y-3">
         <% @event.attempts.sort_by(&:attempted_at).each do |attempt| %>
@@ -45,38 +45,38 @@
                 <% if attempt.error&.start_with?("TransformationError:") %>
                   <span class="rounded-full bg-amber-100 text-amber-800 px-2 py-0.5 text-xs">transform error</span>
                 <% end %>
-                <span class="text-gray-500"><%= attempt.status %></span>
+                <span class="text-neutral-500 dark:text-neutral-400"><%= attempt.status %></span>
                 <% if can_edit? && @retryable_attempt_ids.include?(attempt.id) %>
                   <%= button_to "Retry", event_retries_path(@event), params: { connection_id: attempt.connection_id },
-                        class: "rounded-md border border-gray-300 px-2 py-1 text-xs font-medium hover:bg-gray-50" %>
+                        class: "cursor-pointer rounded-md px-2 py-1 text-xs font-medium text-neutral-700 inset-ring inset-ring-neutral-950/10 hover:bg-neutral-950/5 dark:text-neutral-300 dark:inset-ring-white/10 dark:hover:bg-white/5" %>
                 <% end %>
               </div>
             </div>
-            <dl class="grid grid-cols-[8rem_1fr] gap-y-0.5 text-xs text-gray-600">
+            <dl class="grid grid-cols-[8rem_1fr] gap-y-0.5 text-xs text-neutral-600 dark:text-neutral-400">
               <dt>Attempt #</dt><dd><%= attempt.attempt_number %></dd>
               <dt>HTTP status</dt><dd><%= attempt.response_status %></dd>
               <dt>Duration</dt><dd><%= attempt.duration_ms %> ms</dd>
-              <dt>At</dt><dd><%= attempt.attempted_at.strftime("%Y-%m-%d %H:%M:%S") %></dd>
+              <dt>At</dt><dd><%= timestamp_tag(attempt.attempted_at) %></dd>
             </dl>
             <% if attempt.error.present? %>
               <div class="mt-2">
-                <div class="text-xs text-gray-500">Error</div>
+                <div class="text-xs text-neutral-500 dark:text-neutral-400">Error</div>
                 <pre class="bg-red-50 text-red-800 rounded p-2 text-xs overflow-x-auto"><%= attempt.error %></pre>
               </div>
             <% end %>
             <% if attempt.response_body.present? %>
               <div class="mt-2">
-                <div class="text-xs text-gray-500">Response body</div>
-                <pre class="bg-gray-50 rounded p-2 text-xs overflow-x-auto"><%= attempt.response_body %></pre>
+                <div class="text-xs text-neutral-500 dark:text-neutral-400">Response body</div>
+                <pre class="overflow-x-auto rounded-lg bg-neutral-950/5 p-2 text-xs text-neutral-800 dark:bg-white/5 dark:text-neutral-200"><%= attempt.response_body %></pre>
               </div>
             <% end %>
             <% if attempt.transformed_body.present? || attempt.transformed_headers.present? %>
               <div class="mt-2">
-                <div class="text-xs font-medium text-gray-500">Transformed request</div>
-                <div class="text-xs text-gray-500 mt-1">Headers</div>
-                <pre class="bg-gray-50 rounded p-2 text-xs overflow-x-auto"><%= JSON.pretty_generate(attempt.transformed_headers.to_h) %></pre>
-                <div class="text-xs text-gray-500 mt-1">Body</div>
-                <pre class="bg-gray-50 rounded p-2 text-xs overflow-x-auto"><%= attempt.transformed_body %></pre>
+                <div class="text-xs font-medium text-neutral-500 dark:text-neutral-400">Transformed request</div>
+                <div class="text-xs text-neutral-500 dark:text-neutral-400 mt-1">Headers</div>
+                <pre class="overflow-x-auto rounded-lg bg-neutral-950/5 p-2 text-xs text-neutral-800 dark:bg-white/5 dark:text-neutral-200"><%= JSON.pretty_generate(attempt.transformed_headers.to_h) %></pre>
+                <div class="text-xs text-neutral-500 dark:text-neutral-400 mt-1">Body</div>
+                <pre class="overflow-x-auto rounded-lg bg-neutral-950/5 p-2 text-xs text-neutral-800 dark:bg-white/5 dark:text-neutral-200"><%= attempt.transformed_body %></pre>
               </div>
             <% end %>
           </div>

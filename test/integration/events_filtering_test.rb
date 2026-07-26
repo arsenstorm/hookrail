@@ -164,6 +164,24 @@ class EventsFilteringTest < ActionDispatch::IntegrationTest
     assert shows?(old)
   end
 
+  test "from/to with datetimes bound received_at to the minute and honour offsets" do
+    s = make_source!; c = make_connection!(s)
+    before = make_event!(s, c, statuses: %w[succeeded], received_at: Time.utc(2026, 7, 26, 10, 0))
+    inside = make_event!(s, c, statuses: %w[succeeded], received_at: Time.utc(2026, 7, 26, 14, 0))
+    after  = make_event!(s, c, statuses: %w[succeeded], received_at: Time.utc(2026, 7, 26, 18, 0))
+
+    get events_path(from: "2026-07-26T12:00:00Z", to: "2026-07-26T16:00:00Z")
+    assert shows?(inside)
+    assert_not shows?(before)
+    assert_not shows?(after)
+
+    # 13:00+01:00 is 12:00Z: the picker's local-offset stamps filter correctly.
+    get events_path(from: "2026-07-26T13:00:00+01:00", to: "2026-07-26T17:00:00+01:00")
+    assert shows?(inside)
+    assert_not shows?(before)
+    assert_not shows?(after)
+  end
+
   # ---- R4: body search ----
 
   test "q does case-insensitive substring search on body and escapes wildcards" do
@@ -241,6 +259,26 @@ class EventsFilteringTest < ActionDispatch::IntegrationTest
     get next_href
     assert_response :ok
     assert css_select("tbody tr").size <= 50
+  end
+
+  # ---- Time-range presets ----
+
+  test "range preset filters to the relative window and beats an explicit from/to" do
+    s = make_source!; c = make_connection!(s)
+    recent = make_event!(s, c, statuses: %w[succeeded], received_at: 10.minutes.ago)
+    old    = make_event!(s, c, statuses: %w[succeeded], received_at: 3.hours.ago)
+
+    get events_path(range: "1h")
+    assert shows?(recent)
+    assert_not shows?(old)
+
+    # A preset wins over stale from/to in the same request.
+    get events_path(range: "1h", from: 5.days.ago.to_date.to_s, to: Date.current.to_s)
+    assert shows?(recent)
+    assert_not shows?(old)
+
+    get events_path(range: "bogus")
+    assert shows?(old), "an unknown preset must fall back to no time filter"
   end
 
   # ---- R7: no N+1 ----

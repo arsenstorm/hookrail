@@ -1,0 +1,60 @@
+<header class="border-b border-neutral-950/10 surface lg:hidden dark:border-white/10">
+  <details data-controller="dismiss">
+    <summary class="flex cursor-pointer list-none items-center justify-between px-5 py-4 [&::-webkit-details-marker]:hidden">
+      <span class="flex items-center gap-2">
+        <%= render "shared/logo_mark", class: "size-6 shrink-0 text-oxblood-700 dark:text-oxblood-500" %>
+        <span class="text-sm font-semibold text-neutral-950 dark:text-white">Hookrail</span>
+      </span>
+      <span class="relative">
+        <span class="sr-only">Open navigation</span>
+        <svg viewBox="0 0 16 16" class="size-4 fill-neutral-600 dark:fill-neutral-400" aria-hidden="true">
+          <path fill-rule="evenodd" d="M2 4.75A.75.75 0 0 1 2.75 4h10.5a.75.75 0 0 1 0 1.5H2.75A.75.75 0 0 1 2 4.75ZM2 8a.75.75 0 0 1 .75-.75h10.5a.75.75 0 0 1 0 1.5H2.75A.75.75 0 0 1 2 8Zm0 3.25a.75.75 0 0 1 .75-.75h10.5a.75.75 0 0 1 0 1.5H2.75a.75.75 0 0 1-.75-.75Z" clip-rule="evenodd"/>
+        </svg>
+        <span class="absolute top-1/2 left-1/2 size-[max(100%,3rem)] -translate-1/2 pointer-fine:hidden" aria-hidden="true"></span>
+      </span>
+    </summary>
+    <nav class="space-y-6 border-t border-neutral-950/10 px-5 py-4 dark:border-white/10">
+      <%# On /org pages this mirrors the settings sidebar instead of the app one. %>
+      <% sections = if settings_area?
+                      [ [ "Monitor", settings_monitor_items ], [ "Organization settings", settings_nav_items ] ]
+                    else
+                      sidebar_sections
+                    end %>
+      <% sections.each do |label, items| %>
+        <div>
+          <p class="px-2.5 text-xs font-medium text-neutral-500 dark:text-neutral-400"><%= label %></p>
+          <ul role="list" class="mt-1.5 space-y-0.5">
+            <%# Mirrors the settings sidebar: Dashboard heads the Monitor group
+                but stays out of settings_monitor_items (see the note there). %>
+            <% if settings_area? && label == "Monitor" %>
+              <li>
+                <%= link_to dashboard_path, class: nav_item_classes(dashboard_path) do %>
+                  <%= nav_icon(:dashboard) %>Dashboard
+                <% end %>
+              </li>
+            <% end %>
+            <% items.each do |name, path, icon| %>
+              <li>
+                <%= link_to path, class: nav_item_classes(path) do %>
+                  <%= nav_icon(icon) %><%= name %>
+                <% end %>
+              </li>
+            <% end %>
+          </ul>
+        </div>
+      <% end %>
+      <% if !settings_area? && Current.membership&.admin_or_owner? %>
+        <div>
+          <%= link_to members_path, class: nav_item_classes(members_path) do %>
+            <%= nav_icon(:gear) %>Organization settings
+          <% end %>
+        </div>
+      <% end %>
+      <%# Opts out of the nav's space-y-6 (hence the !): same optical centering
+          as the sidebar footer, py-1.5 row above, py-2 button below. %>
+      <div class="mt-2.5! border-t border-neutral-950/10 pt-2 dark:border-white/10">
+        <%= render "shared/user_menu", drop: "down" %>
+      </div>
+    </nav>
+  </details>
+</header>

@@ -29,11 +29,11 @@ class AccountUiTest < ActionDispatch::IntegrationTest
   test "the sidebar menu links to the account pages" do
     sign_in_as!(make_user!("menuowner", name: "Menu Owner"))
 
-    get root_path
+    get dashboard_path
     assert_response :ok
-    assert_select "aside details summary", text: /Menu Owner/
+    assert_select "aside button[aria-haspopup=menu]", text: /Menu Owner/
     assert_select "a[href=?]", account_path, text: "Account settings"
-    assert_select "a[href=?]", security_account_path, text: "Security"
+    assert_select "a[href=?]", root_path, text: "Home page"
   end
 
   test "account settings shows the github profile and every org membership" do
@@ -49,6 +49,7 @@ class AccountUiTest < ActionDispatch::IntegrationTest
     assert_match "acctowner@example.com", response.body
     assert_select "img[src=?]", "https://avatars/1"
     assert_match other.organization.name, response.body
+    assert_select "a[href=?]", security_account_path, text: "Security"
   end
 
   test "security lists your own cli tokens and lets a non-admin revoke one" do
@@ -71,7 +72,7 @@ class AccountUiTest < ActionDispatch::IntegrationTest
 
     # ...but not somebody else's: that still needs org admin.
     delete cli_token_path(theirs)
-    assert_redirected_to root_path
+    assert_redirected_to dashboard_path
     assert_nil theirs.reload.revoked_at
   end
 end

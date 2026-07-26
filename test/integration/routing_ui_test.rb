@@ -105,6 +105,6 @@ class RoutingUiTest < ActionDispatch::IntegrationTest
     connection = connect!(create_test_project!)
 
     get edit_connection_path(connection)
-    assert_redirected_to login_path
+    assert_redirected_to sign_in_path
   end
 end

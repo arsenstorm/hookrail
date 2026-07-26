@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html class="antialiased">
+  <head>
+    <%= render "layouts/head" %>
+  </head>
+
+  <%# No sidebar and no centring: the marketing page lays out its own sections. %>
+  <body class="canvas text-neutral-950 dark:text-white">
+    <%= render "layouts/flash" %>
+    <%= yield %>
+  </body>
+</html>

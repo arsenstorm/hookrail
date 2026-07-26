@@ -75,6 +75,6 @@ class ApiKeysUiTest < ActionDispatch::IntegrationTest
 
   test "unauthenticated requests redirect to login" do
     get api_keys_path
-    assert_redirected_to login_path
+    assert_redirected_to sign_in_path
   end
 end

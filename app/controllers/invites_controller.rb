@@ -8,22 +8,22 @@ class InvitesController < ApplicationController
     user = resume_session
 
     unless invitation
-      return redirect_to(user ? root_path : login_path, alert: "That invitation is no longer valid.")
+      return redirect_to(user ? dashboard_path : sign_in_path, alert: "That invitation is no longer valid.")
     end
 
     if user
       case (result = invitation.accept!(user))
       when Membership
         session[:organization_id] = result.organization_id
-        redirect_to root_path, notice: "Joined #{result.organization.name}."
+        redirect_to dashboard_path, notice: "Joined #{result.organization.name}."
       when :expired
-        redirect_to root_path, alert: "That invitation has expired."
+        redirect_to dashboard_path, alert: "That invitation has expired."
       when :email_mismatch
-        redirect_to root_path, alert: "That invitation was issued to a different email address."
+        redirect_to dashboard_path, alert: "That invitation was issued to a different email address."
       end
     else
       session[:invite_token] = params[:token]
-      redirect_to login_path, notice: "Sign in with GitHub to accept your invitation to #{invitation.organization.name}."
+      redirect_to sign_in_path, notice: "Sign in with GitHub to accept your invitation to #{invitation.organization.name}."
     end
   end
 end

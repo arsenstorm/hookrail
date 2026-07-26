@@ -96,6 +96,6 @@ class SourcesManagementTest < ActionDispatch::IntegrationTest
 
   test "unauthenticated requests redirect to login" do
     get sources_path
-    assert_redirected_to login_path
+    assert_redirected_to sign_in_path
   end
 end

@@ -92,10 +92,10 @@ class AlertWebhookUiTest < ActionDispatch::IntegrationTest
     assert_nil organization.alert_webhook_secret
   end
 
-  test "dashboard links to the alert webhook page" do
+  test "the organization settings nav links to the alert webhook page" do
     sign_in!
 
-    get root_path
+    get members_path
     assert_response :ok
     assert_select "a[href=?]", alert_webhook_path
   end

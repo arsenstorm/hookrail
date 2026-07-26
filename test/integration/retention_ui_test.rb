@@ -23,10 +23,10 @@ class RetentionUiTest < ActionDispatch::IntegrationTest
     User.find_by(github_uid: "12345").organization.reload
   end
 
-  test "dashboard links to the retention page" do
+  test "the organization settings nav links to the retention page" do
     sign_in!
 
-    get root_path
+    get members_path
     assert_response :ok
     assert_select "a[href=?]", retention_path
   end

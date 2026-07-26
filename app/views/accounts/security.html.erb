@@ -2,8 +2,8 @@
 <% user = current_user %>
 <div class="mx-auto w-full max-w-2xl py-16">
   <div class="mb-6 flex items-center justify-between gap-4">
-    <h1 class="text-2xl font-semibold tracking-tight text-balance text-neutral-950 dark:text-white">Security</h1>
-    <%= link_to "Account settings", account_path, class: "text-sm text-neutral-500 transition-colors duration-150 ease-out hover:text-neutral-950 dark:text-neutral-400 dark:hover:text-white" %>
+    <h1 class="<%= ui(:heading) %>">Security</h1>
+    <%= link_to "Account settings", account_path, class: "text-sm text-neutral-500 hover:text-neutral-950 dark:text-neutral-400 dark:hover:text-white" %>
   </div>
 
   <h2 class="text-sm font-semibold text-neutral-950 dark:text-white">Sign-in method</h2>
@@ -12,8 +12,8 @@
       <p class="text-sm font-medium text-neutral-950 dark:text-white">GitHub</p>
       <p class="truncate text-sm text-neutral-500 dark:text-neutral-400">Signed in as @<%= user.github_login %> · user ID <%= user.github_uid %></p>
     </div>
-    <%= button_to "Sign out", logout_path, method: :delete,
-          class: "shrink-0 cursor-pointer rounded-md bg-oxblood-700 px-3 py-1.5 text-sm font-medium text-white transition-colors duration-150 ease-out hover:bg-oxblood-800 dark:bg-oxblood-600 dark:hover:bg-oxblood-500" %>
+    <%= button_to "Sign out", sign_out_path, method: :delete,
+          class: "shrink-0 cursor-pointer rounded-md bg-oxblood-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-oxblood-800 dark:bg-oxblood-600 dark:hover:bg-oxblood-500" %>
   </div>
   <p class="mt-2 text-xs text-neutral-500 dark:text-neutral-400">
     GitHub is the only way into this account — there is no password to change. Revoking the Hookrail
@@ -32,12 +32,13 @@
           <div class="min-w-0">
             <p class="truncate text-sm font-medium text-neutral-950 dark:text-white"><%= token.name %></p>
             <p class="truncate text-sm text-neutral-500 dark:text-neutral-400">
-              <%= token.prefix %>… · <%= token.last_used_at ? "used #{time_ago_in_words(token.last_used_at)} ago" : "never used" %>
+              <%= token.prefix %>… ·
+              <% if token.last_used_at %>used <%= timestamp_tag(token.last_used_at) %><% else %>never used<% end %>
             </p>
           </div>
           <%= button_to "Revoke", cli_token_path(token), method: :delete,
                 form: { data: { turbo_confirm: "Revoke #{token.name}? Any device using it stops working." } },
-                class: "shrink-0 cursor-pointer rounded-md px-3 py-1.5 text-sm font-medium text-red-700 transition-colors duration-150 ease-out hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40" %>
+                class: "shrink-0 cursor-pointer rounded-md px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40" %>
         </li>
       <% end %>
     </ul>

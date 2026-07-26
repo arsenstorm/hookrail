@@ -94,6 +94,6 @@ class ConnectionsManagementTest < ActionDispatch::IntegrationTest
 
   test "unauthenticated requests redirect to login" do
     get connections_path
-    assert_redirected_to login_path
+    assert_redirected_to sign_in_path
   end
 end

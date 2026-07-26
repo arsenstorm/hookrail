@@ -1,0 +1,25 @@
+<% content_for :title, "New organization" %>
+<div class="mx-auto w-full max-w-md py-16">
+  <h1 class="<%= ui(:heading) %>">New organization</h1>
+  <p class="mt-1 <%= ui(:hint) %>">
+    A separate workspace with its own projects, members, and API keys. You'll be its owner.
+  </p>
+
+  <div class="mt-6 <%= ui(:card) %> p-5">
+    <%= form_with model: @organization, url: new_organization_path do |f| %>
+      <% if @organization.errors.any? %>
+        <div class="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-800 inset-ring inset-ring-red-600/20 dark:bg-red-950/40 dark:text-red-200 dark:inset-ring-red-400/25">
+          <ul class="list-inside list-disc">
+            <% @organization.errors.full_messages.each do |m| %><li><%= m %></li><% end %>
+          </ul>
+        </div>
+      <% end %>
+      <%= f.label :name, "Organization name", class: ui(:label) %>
+      <%= f.text_field :name, placeholder: "Acme", class: "#{ui(:input)} mt-1.5" %>
+      <p class="mt-1.5 <%= ui(:hint) %>">A project named Default is created alongside it.</p>
+      <%= f.submit "Create organization", class: "#{ui(:button_primary)} mt-4 w-full" %>
+    <% end %>
+  </div>
+
+  <%= link_to "Cancel", dashboard_path, class: "#{ui(:muted_link)} mt-4 inline-block" %>
+</div>

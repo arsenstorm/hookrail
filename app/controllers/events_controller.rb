@@ -17,7 +17,8 @@ class EventsController < ApplicationController
 
     @retryable_count = Attempt.retryable_for(filtered_events).count
     @filtered_count  = filtered_events.count
-    @connections     = Current.project.connections.includes(:source, :destination).order(created_at: :desc)
+    # Loaded, not lazy: the view asks .any? more than once.
+    @connections     = Current.project.connections.includes(:source, :destination).order(created_at: :desc).to_a
 
     rows         = scope.limit(PAGE_SIZE + 1).to_a
     @has_next    = rows.size > PAGE_SIZE

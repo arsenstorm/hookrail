@@ -1,46 +1,45 @@
 <% content_for :title, "Destinations" %>
-<div class="w-full max-w-4xl mx-auto py-16">
-  <div class="flex items-center justify-between mb-6">
-    <h1 class="text-2xl font-semibold">Destinations</h1>
+<div>
+  <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
+    <h1 class="<%= ui(:heading) %>">Destinations</h1>
     <div class="flex items-center gap-4">
       <% if can_edit? %>
-        <%= link_to "New destination", new_destination_path, class: "text-blue-600 hover:underline" %>
+        <%= link_to "New destination", new_destination_path, class: ui(:button_primary) %>
       <% end %>
-      <%= link_to "Dashboard", root_path, class: "text-sm text-gray-500 hover:text-gray-700" %>
     </div>
   </div>
 
   <% if @destinations.empty? %>
-    <p class="text-gray-500">No destinations yet.</p>
+    <p class="text-neutral-500 dark:text-neutral-400">No destinations yet.</p>
   <% else %>
-    <table class="w-full text-sm">
-      <thead class="text-left text-gray-500 border-b">
+    <div class="<%= ui(:scroller) %>"><div class="<%= ui(:scroller_inner) %>"><table class="w-full text-sm">
+      <thead class="border-b border-neutral-950/10 text-left text-neutral-500 dark:border-white/10 dark:text-neutral-400">
         <tr>
-          <th class="py-2 font-medium">Name</th>
-          <th class="py-2 font-medium">URL</th>
-          <th class="py-2 font-medium">Created</th>
-          <th class="py-2 font-medium"></th>
+          <th class="<%= ui(:th) %>">Name</th>
+          <th class="<%= ui(:th) %>">URL</th>
+          <th class="<%= ui(:th) %>">Created</th>
+          <th class="<%= ui(:th) %>"></th>
         </tr>
       </thead>
-      <tbody>
+      <tbody class="<%= ui(:table_body) %>">
         <% @destinations.each do |destination| %>
-          <tr class="border-b hover:bg-gray-50">
-            <td class="py-2">
-              <%= link_to destination.name, destination_path(destination), class: "text-blue-600 hover:underline" %>
+          <tr>
+            <td class="<%= ui(:td_muted) %>">
+              <%= link_to destination.name, destination_path(destination), class: ui(:link) %>
             </td>
-            <td class="py-2">
-              <span class="text-xs text-gray-500"><%= destination.kind_cli? ? "Local CLI session" : destination.url %></span>
+            <td class="<%= ui(:td_muted) %>">
+              <span class="text-xs text-neutral-500 dark:text-neutral-400"><%= destination.kind_cli? ? "Local CLI session" : destination.url %></span>
             </td>
-            <td class="py-2"><%= destination.created_at.strftime("%Y-%m-%d %H:%M") %></td>
-            <td class="py-2">
+            <td class="<%= ui(:td_muted) %>"><%= timestamp_tag(destination.created_at) %></td>
+            <td class="<%= ui(:td_muted) %>">
               <% if can_edit? %>
-                <%= link_to "Edit", edit_destination_path(destination), class: "text-blue-600 hover:underline" %>
-                <%= button_to "Delete", destination_path(destination), method: :delete, class: "text-red-600 hover:underline text-sm", form: { class: "inline" }, data: { turbo_confirm: "Delete this destination? This also deletes its connections and delivery attempts." } %>
+                <%= link_to "Edit", edit_destination_path(destination), class: ui(:link) %>
+                <%= button_to "Delete", destination_path(destination), method: :delete, class: ui(:danger_link), form: { class: "inline" }, data: { turbo_confirm: "Delete this destination? This also deletes its connections and delivery attempts." } %>
               <% end %>
             </td>
           </tr>
         <% end %>
       </tbody>
-    </table>
+    </table></div></div>
   <% end %>
 </div>

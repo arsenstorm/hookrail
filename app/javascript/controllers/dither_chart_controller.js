@@ -4,6 +4,9 @@ import { Controller } from "@hotwired/stimulus"
 // fills into a halftone dot texture — full density at the data line fading
 // toward the baseline — instead of smooth gradients.
 //
+// Gridlines are always drawn behind the data; hovering adds a crosshair on the
+// nearest bucket and a tooltip with that bucket's numbers.
+//
 //   data-dither-chart-type-value:   "area" | "bars"
 //   data-dither-chart-labels-value: JSON array of bucket labels
 //   data-dither-chart-series-value: JSON [{name, color, values: [Number]}]
@@ -17,11 +20,14 @@ const BAYER = [
 ].map(row => row.map(v => (v + 0.5) / 16))
 
 const DOT = 2 // tunable: logical px per dither cell — bigger = chunkier halftone
+const GRID_LINES = 4 // tunable: horizontal gridlines behind the data
 
 export default class extends Controller {
+  static targets = ["canvas", "tooltip"]
   static values = { type: String, labels: Array, series: Array }
 
   connect() {
+    this.index = null
     this.draw()
     // One redraw per frame: a resize drag fires far faster than we can redraw
     // two dithered canvases.
@@ -37,8 +43,81 @@ export default class extends Controller {
     if (this.frame) cancelAnimationFrame(this.frame)
   }
 
+  // --- Interaction ---------------------------------------------------------
+
+  hover(event) {
+    const rect = this.canvasTarget.getBoundingClientRect()
+    if (rect.width === 0) return
+
+    const x = event.clientX - rect.left
+    const index = this.indexAt(x, rect.width)
+    if (index !== this.index) {
+      this.index = index
+      this.draw()
+    }
+    this.showTooltip(rect)
+  }
+
+  leave() {
+    if (this.index === null) return
+    this.index = null
+    this.draw()
+    this.tooltipTarget.hidden = true
+  }
+
+  indexAt(x, w) {
+    const n = this.labelsValue.length
+    if (n === 0) return null
+    const t = this.typeValue === "bars" ? x / (w / n) : (x / w) * (n - 1)
+    return Math.max(0, Math.min(n - 1, Math.round(this.typeValue === "bars" ? t - 0.5 : t)))
+  }
+
+  showTooltip(rect) {
+    const tooltip = this.tooltipTarget
+    const rows = this.seriesValue.map(s => [ s.color, s.name, s.values[this.index] || 0 ])
+    const total = rows.reduce((sum, [ , , v ]) => sum + v, 0)
+
+    tooltip.replaceChildren(this.tooltipMarkup(rows, rows.length > 1 ? total : null))
+    tooltip.hidden = false
+
+    // Clamp inside the chart so the tooltip never hangs off the card.
+    const half = tooltip.offsetWidth / 2
+    const x = this.xAt(this.index, rect.width)
+    tooltip.style.left = `${Math.max(half, Math.min(rect.width - half, x))}px`
+  }
+
+  tooltipMarkup(rows, total) {
+    const frag = document.createDocumentFragment()
+    const label = document.createElement("p")
+    label.className = "font-medium text-neutral-950 dark:text-white"
+    label.textContent = this.labelsValue[this.index]
+    frag.append(label)
+
+    for (const [ color, name, value ] of rows) {
+      const row = document.createElement("p")
+      row.className = "mt-0.5 flex items-center gap-1.5 text-neutral-500 dark:text-neutral-400"
+      const swatch = document.createElement("span")
+      swatch.className = "inline-block size-2 shrink-0 rounded-xs"
+      swatch.style.backgroundColor = color
+      const text = document.createElement("span")
+      text.textContent = `${name} ${value.toLocaleString()}`
+      row.append(swatch, text)
+      frag.append(row)
+    }
+
+    if (total !== null) {
+      const sum = document.createElement("p")
+      sum.className = "mt-0.5 text-neutral-500 dark:text-neutral-400"
+      sum.textContent = `Total ${total.toLocaleString()}`
+      frag.append(sum)
+    }
+    return frag
+  }
+
+  // --- Drawing -------------------------------------------------------------
+
   draw() {
-    const canvas = this.element
+    const canvas = this.canvasTarget
     const dpr = window.devicePixelRatio || 1
     const w = canvas.clientWidth
     const h = canvas.clientHeight
@@ -48,10 +127,16 @@ export default class extends Controller {
     const ctx = canvas.getContext("2d")
     ctx.scale(dpr, dpr)
     ctx.clearRect(0, 0, w, h)
-    // The canvas element's own text color carries the theme-aware axis color.
-    this.axisColor = getComputedStyle(canvas).color
+
+    // Theme-aware line colors live in CSS so dark mode needs no JS branch.
+    const styles = getComputedStyle(this.element)
+    this.gridColor = styles.getPropertyValue("--chart-grid").trim()
+    this.axisColor = styles.getPropertyValue("--chart-axis").trim()
+
+    this.grid(ctx, w, h)
     if (this.typeValue === "bars") this.drawBars(ctx, w, h)
     else this.drawArea(ctx, w, h)
+    if (this.index !== null) this.crosshair(ctx, w, h)
   }
 
   // Plot one dither cell if its intensity clears the Bayer threshold.
@@ -64,6 +149,23 @@ export default class extends Controller {
     const totals = this.labelsValue.map((_, i) =>
       this.seriesValue.reduce((sum, s) => sum + (s.values[i] || 0), 0))
     return Math.max(1, ...totals)
+  }
+
+  // Center of a bucket: bars own a slot, area points sit on the line.
+  xAt(i, w) {
+    const n = this.labelsValue.length
+    if (this.typeValue === "bars") return (i + 0.5) * (w / n)
+    return n < 2 ? 0 : i * (w - DOT) / (n - 1)
+  }
+
+  grid(ctx, w, h) {
+    ctx.fillStyle = this.gridColor
+    for (let i = 1; i <= GRID_LINES; i++) ctx.fillRect(0, Math.round(h - i * (h / GRID_LINES)), w, 1)
+  }
+
+  crosshair(ctx, w, h) {
+    ctx.fillStyle = this.axisColor
+    ctx.fillRect(Math.round(this.xAt(this.index, w)), 0, 1, h)
   }
 
   drawArea(ctx, w, h) {
@@ -95,6 +197,17 @@ export default class extends Controller {
       if (i === 0) ctx.moveTo(xAt(i), yAt(v))
       else ctx.lineTo(xAt(i), yAt(v))
     })
+    ctx.stroke()
+
+    if (this.index === null) return
+
+    // Marker on the hovered point, punched out of the fill so it stays legible.
+    const x = xAt(this.index)
+    const y = yAt(values[this.index])
+    ctx.fillStyle = getComputedStyle(this.element).getPropertyValue("--surface").trim() || "#fff"
+    ctx.beginPath()
+    ctx.arc(x, y, 3.5, 0, Math.PI * 2)
+    ctx.fill()
     ctx.stroke()
   }
 

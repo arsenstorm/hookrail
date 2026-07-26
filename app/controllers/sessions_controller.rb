@@ -13,22 +13,22 @@ class SessionsController < ApplicationController
       case (result = invitation.accept!(user))
       when Membership
         session[:organization_id] = result.organization_id
-        return redirect_to root_path, notice: "Joined #{result.organization.name}."
+        return redirect_to dashboard_path, notice: "Joined #{result.organization.name}."
       when :expired
-        return redirect_to root_path, alert: "That invitation has expired."
+        return redirect_to dashboard_path, alert: "That invitation has expired."
       when :email_mismatch
-        return redirect_to root_path, alert: "That invitation was issued to a different email address."
+        return redirect_to dashboard_path, alert: "That invitation was issued to a different email address."
       end
     end
-    redirect_to root_path, notice: "Signed in as #{user.github_login}"
+    redirect_to dashboard_path, notice: "Signed in as #{user.github_login}"
   end
 
   def destroy
     reset_session
-    redirect_to login_path, notice: "Signed out"
+    redirect_to sign_in_path, notice: "Signed out"
   end
 
   def failure
-    redirect_to login_path, alert: "Authentication failed"
+    redirect_to sign_in_path, alert: "Authentication failed"
   end
 end

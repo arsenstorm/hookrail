@@ -112,6 +112,6 @@ class RetryFlowTest < ActionDispatch::IntegrationTest
     event, connection, _ = build_delivery!(project)
     add_attempt!(event, connection, status: :dead)
     post event_retries_path(event), params: { connection_id: connection.id }
-    assert_redirected_to login_path
+    assert_redirected_to sign_in_path
   end
 end

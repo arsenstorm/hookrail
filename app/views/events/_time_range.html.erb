@@ -1,0 +1,134 @@
+<%
+  # A split control: the calendar segment opens the custom range picker (month
+  # grid + start/end datetimes + timezone), the label segment opens the preset
+  # list. One ring around both so they read as a single button with a seam.
+  presets = [ [ "All time", nil ], [ "Last hour", "1h" ], [ "Last 24 hours", "24h" ],
+              [ "Last 7 days", "7d" ], [ "Last 30 days", "30d" ] ]
+  base_params = @filter_params.except(:range, :from, :to)
+  custom_active = @from.present? || @to.present?
+  segment = "flex cursor-pointer items-center gap-2 py-1.5 text-sm font-medium text-neutral-950 hover:bg-neutral-950/5 aria-expanded:bg-neutral-950/5 dark:text-white dark:hover:bg-white/5 dark:aria-expanded:bg-white/5"
+  panel = "hidden absolute top-full z-20 mt-1 origin-top rounded-xl surface shadow-lg inset-ring inset-ring-neutral-950/10 dark:shadow-none dark:inset-ring-white/10"
+  transitions = {
+    "data-transition-enter-active": "transition duration-[120ms] ease-out-quart motion-reduce:transition-none",
+    "data-transition-enter-from": "opacity-0 scale-[0.98]",
+    "data-transition-enter-to": "opacity-100 scale-100",
+    "data-transition-leave-active": "transition duration-75 ease-out-quart motion-reduce:transition-none",
+    "data-transition-leave-from": "opacity-100 scale-100",
+    "data-transition-leave-to": "opacity-0 scale-[0.98]"
+  }
+  item = "block w-full cursor-pointer rounded-md px-2.5 py-1.5 text-left text-sm font-medium text-neutral-600 hover:bg-neutral-950/5 hover:text-neutral-950 dark:text-neutral-400 dark:hover:bg-white/5 dark:hover:text-white"
+  item_active = "block w-full rounded-md bg-neutral-950/5 px-2.5 py-1.5 text-left text-sm font-medium text-neutral-950 dark:bg-white/10 dark:text-white"
+  field = "min-w-0 rounded-lg bg-transparent px-2.5 py-1.5 text-sm text-neutral-950 inset-ring inset-ring-neutral-950/15 placeholder:text-neutral-400 focus:outline-2 focus:outline-offset-2 focus:outline-neutral-950/40 dark:text-white dark:inset-ring-white/15 dark:focus:outline-white/40"
+  range_label = "text-xs font-medium text-neutral-500 dark:text-neutral-400"
+  month_nav = "flex size-8 cursor-pointer items-center justify-center rounded-md text-neutral-500 hover:bg-neutral-950/5 hover:text-neutral-950 dark:text-neutral-400 dark:hover:bg-white/5 dark:hover:text-white"
+%>
+<div class="inline-flex divide-x divide-neutral-950/10 rounded-md inset-ring inset-ring-neutral-950/15 dark:divide-white/10 dark:inset-ring-white/15">
+  <div class="relative flex" data-controller="dropdown"
+       data-action="click@window->dropdown#hide keydown@window->dropdown#escape">
+    <button type="button" aria-haspopup="dialog" aria-expanded="false" aria-label="Choose a custom date range"
+            data-dropdown-target="trigger" data-action="dropdown#toggle"
+            class="<%= segment %> rounded-l-md px-2 <%= "bg-neutral-950/5 dark:bg-white/5" if custom_active %>">
+      <svg viewBox="0 0 16 16" class="size-4 shrink-0 fill-neutral-400" aria-hidden="true">
+        <path fill-rule="evenodd" d="M5.75 1a.75.75 0 0 1 .75.75V3h3V1.75a.75.75 0 0 1 1.5 0V3h.75A2.25 2.25 0 0 1 14 5.25v7.5A2.25 2.25 0 0 1 11.75 15h-7.5A2.25 2.25 0 0 1 2 12.75v-7.5A2.25 2.25 0 0 1 4.25 3H5V1.75A.75.75 0 0 1 5.75 1Zm-1.5 3.5a.75.75 0 0 0-.75.75V6.5h9V5.25a.75.75 0 0 0-.75-.75h-7.5ZM12.5 8h-9v4.75c0 .414.336.75.75.75h7.5a.75.75 0 0 0 .75-.75V8Z" clip-rule="evenodd"/>
+      </svg>
+    </button>
+
+    <div role="dialog" aria-label="Custom date range" data-dropdown-target="menu" <%= tag.attributes(transitions) %>
+         class="<%= panel %> left-0 w-72">
+      <%= form_with url: events_path, method: :get, class: "p-3",
+            data: { controller: "date-range", date_range_from_value: @from, date_range_to_value: @to,
+                    action: "submit->date-range#compose" } do %>
+        <% base_params.each { |name, value| %><%= hidden_field_tag name, value, id: nil %><% } %>
+        <input type="hidden" name="from" data-date-range-target="fromField">
+        <input type="hidden" name="to" data-date-range-target="toField">
+
+        <div class="flex items-center justify-between pl-1">
+          <p class="text-sm font-semibold text-neutral-950 dark:text-white" data-date-range-target="monthLabel"></p>
+          <div class="flex items-center gap-0.5">
+            <button type="button" aria-label="Previous month" data-action="date-range#prev" class="<%= month_nav %>">
+              <svg viewBox="0 0 16 16" class="size-4 fill-current" aria-hidden="true">
+                <path fill-rule="evenodd" d="M9.78 4.22a.75.75 0 0 1 0 1.06L7.06 8l2.72 2.72a.75.75 0 1 1-1.06 1.06L5.47 8.53a.75.75 0 0 1 0-1.06l3.25-3.25a.75.75 0 0 1 1.06 0Z" clip-rule="evenodd"/>
+              </svg>
+            </button>
+            <button type="button" aria-label="Next month" data-action="date-range#next" class="<%= month_nav %>">
+              <svg viewBox="0 0 16 16" class="size-4 fill-current" aria-hidden="true">
+                <path fill-rule="evenodd" d="M6.22 4.22a.75.75 0 0 1 1.06 0l3.25 3.25a.75.75 0 0 1 0 1.06l-3.25 3.25a.75.75 0 0 1-1.06-1.06L8.94 8 6.22 5.28a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="mt-1 grid grid-cols-7 justify-items-center text-center">
+          <% %w[M T W T F S S].each do |letter| %>
+            <span class="flex size-9 items-center justify-center text-xs font-medium text-neutral-400 dark:text-neutral-500" aria-hidden="true"><%= letter %></span>
+          <% end %>
+        </div>
+        <div class="grid grid-cols-7 justify-items-center" data-date-range-target="grid"></div>
+
+        <div class="mt-3 border-t border-neutral-950/10 pt-3 dark:border-white/10">
+          <label for="range_start_date" class="<%= range_label %>">Start</label>
+          <div class="mt-1.5 flex gap-2">
+            <input id="range_start_date" type="text" autocomplete="off" placeholder="Jul 1, 2026"
+                   class="<%= field %> flex-1"
+                   data-date-range-target="startDate" data-action="change->date-range#dateChanged"
+                   data-date-range-bound-param="start">
+            <input type="text" autocomplete="off" inputmode="numeric" aria-label="Start time" placeholder="00:00"
+                   class="<%= field %> w-18 text-center tabular-nums" data-date-range-target="startTime">
+          </div>
+          <label for="range_end_date" class="mt-3 block <%= range_label %>">End</label>
+          <div class="mt-1.5 flex gap-2">
+            <input id="range_end_date" type="text" autocomplete="off" placeholder="Jul 31, 2026"
+                   class="<%= field %> flex-1"
+                   data-date-range-target="endDate" data-action="change->date-range#dateChanged"
+                   data-date-range-bound-param="end">
+            <input type="text" autocomplete="off" inputmode="numeric" aria-label="End time" placeholder="23:59"
+                   class="<%= field %> w-18 text-center tabular-nums" data-date-range-target="endTime">
+          </div>
+        </div>
+
+        <button type="submit" class="<%= ui(:button_secondary) %> mt-3 w-full gap-1.5">
+          Apply <span aria-hidden="true" class="text-neutral-400 dark:text-neutral-500">&#x21B5;</span>
+        </button>
+
+        <div class="mt-1.5 flex justify-center">
+          <span class="relative inline-flex">
+            <select aria-label="Time zone" data-date-range-target="tz"
+                    class="cursor-pointer appearance-none rounded-md bg-transparent py-1 pr-6 pl-2 text-sm text-neutral-500 focus:outline-2 focus:outline-offset-2 focus:outline-neutral-950/40 dark:text-neutral-400 dark:focus:outline-white/40">
+              <option value="local">Local</option>
+              <option value="utc">UTC</option>
+            </select>
+            <svg viewBox="0 0 16 16" class="pointer-events-none absolute top-1/2 right-1 size-4 -translate-y-1/2 fill-neutral-400" aria-hidden="true">
+              <path fill-rule="evenodd" d="M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd"/>
+            </svg>
+          </span>
+        </div>
+
+        <% if custom_active %>
+          <%= link_to "Clear range", events_path(base_params), class: "#{ui(:muted_link)} mt-1 block text-center" %>
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="relative flex" data-controller="dropdown"
+       data-action="click@window->dropdown#hide keydown@window->dropdown#escape">
+    <button type="button" aria-haspopup="menu" aria-expanded="false"
+            data-dropdown-target="trigger" data-action="dropdown#toggle"
+            class="<%= segment %> rounded-r-md pr-2 pl-2.5">
+      <span><%= time_range_label(@range, @from, @to) %></span>
+      <svg viewBox="0 0 16 16" class="size-4 shrink-0 fill-neutral-400" aria-hidden="true">
+        <path fill-rule="evenodd" d="M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd"/>
+      </svg>
+    </button>
+
+    <div role="menu" data-dropdown-target="menu" <%= tag.attributes(transitions) %>
+         class="<%= panel %> right-0 w-52 p-1">
+      <% presets.each do |label, value| %>
+        <% active = @range == value && !custom_active %>
+        <%= link_to label, events_path(value ? base_params.merge(range: value) : base_params),
+              role: "menuitem", "aria-current": active ? "true" : nil,
+              class: active ? item_active : item %>
+      <% end %>
+    </div>
+  </div>
+</div>

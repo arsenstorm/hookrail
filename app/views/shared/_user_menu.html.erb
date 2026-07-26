@@ -1,12 +1,16 @@
 <%
   # `drop` is "up" in the sidebar (the footer sits at the bottom) and "down" in
-  # the mobile nav, where the menu is inline.
+  # the mobile nav, where the menu is inline. The transform origin follows, so
+  # the panel scales out of the trigger rather than out of thin air.
   drop = local_assigns.fetch(:drop, "up")
-  panel_position = drop == "up" ? "bottom-full mb-1" : "top-full mt-1"
-  item = "flex w-full cursor-pointer rounded-sm px-2.5 py-1.5 text-left text-sm font-medium text-neutral-600 transition-colors duration-150 ease-out hover:bg-neutral-950/5 hover:text-neutral-950 dark:text-neutral-400 dark:hover:bg-white/5 dark:hover:text-white"
+  panel_position = drop == "up" ? "bottom-full mb-1 origin-bottom" : "top-full mt-1 origin-top"
+  item = "flex w-full cursor-pointer rounded-sm px-2.5 py-1.5 text-left text-sm font-medium text-neutral-600 hover:bg-neutral-950/5 hover:text-neutral-950 dark:text-neutral-400 dark:hover:bg-white/5 dark:hover:text-white"
 %>
-<details class="group relative" data-controller="dismiss">
-  <summary class="flex cursor-pointer list-none items-center gap-2 rounded-md px-2.5 py-2 transition-colors duration-150 ease-out group-open:bg-neutral-950/5 hover:bg-neutral-950/5 [&::-webkit-details-marker]:hidden dark:group-open:bg-white/5 dark:hover:bg-white/5">
+<div class="relative" data-controller="dropdown"
+     data-action="click@window->dropdown#hide keydown@window->dropdown#escape">
+  <button type="button" aria-haspopup="menu" aria-expanded="false"
+          data-dropdown-target="trigger" data-action="dropdown#toggle"
+          class="flex w-full cursor-pointer items-center gap-2 rounded-md px-2.5 py-2 text-left hover:bg-neutral-950/5 aria-expanded:bg-neutral-950/5 dark:hover:bg-white/5 dark:aria-expanded:bg-white/5">
     <% if current_user.avatar_url.present? %>
       <img src="<%= current_user.avatar_url %>" alt="" width="32" height="32"
            class="size-8 shrink-0 rounded-full -outline-offset-1 outline-1 outline-black/10 dark:outline-white/10">
@@ -22,12 +26,35 @@
     <svg viewBox="0 0 16 16" class="size-4 shrink-0 fill-neutral-400" aria-hidden="true">
       <path fill-rule="evenodd" d="M5.22 10.22a.75.75 0 0 1 1.06 0L8 11.94l1.72-1.72a.75.75 0 1 1 1.06 1.06l-2.25 2.25a.75.75 0 0 1-1.06 0l-2.25-2.25a.75.75 0 0 1 0-1.06Zm5.56-4.44a.75.75 0 0 1-1.06 0L8 4.06 6.28 5.78a.75.75 0 0 1-1.06-1.06l2.25-2.25a.75.75 0 0 1 1.06 0l2.25 2.25a.75.75 0 0 1 0 1.06Z" clip-rule="evenodd"/>
     </svg>
-  </summary>
+  </button>
 
-  <div class="absolute <%= panel_position %> z-10 w-full rounded-lg surface p-1 shadow-lg inset-ring inset-ring-neutral-950/10 dark:shadow-none dark:inset-ring-white/10">
-    <%= link_to "Account settings", account_path, class: item %>
-    <%= link_to "Security", security_account_path, class: item %>
+  <div role="menu" data-dropdown-target="menu"
+       data-transition-enter-active="transition duration-[120ms] ease-out-quart motion-reduce:transition-none"
+       data-transition-enter-from="opacity-0 scale-[0.98]"
+       data-transition-enter-to="opacity-100 scale-100"
+       data-transition-leave-active="transition duration-75 ease-out-quart motion-reduce:transition-none"
+       data-transition-leave-from="opacity-100 scale-100"
+       data-transition-leave-to="opacity-0 scale-[0.98]"
+       class="hidden absolute <%= panel_position %> z-10 w-full rounded-lg surface p-1 shadow-lg inset-ring inset-ring-neutral-950/10 dark:shadow-none dark:inset-ring-white/10">
+    <%= link_to "Home page", root_path, role: "menuitem", class: item %>
+    <div class="flex items-center justify-between gap-2 py-0.5 pr-1 pl-2.5" data-controller="theme">
+      <p class="text-sm font-medium text-neutral-600 dark:text-neutral-400">Theme</p>
+      <div class="flex gap-0.5 rounded-full p-0.5 inset-ring inset-ring-neutral-950/10 dark:inset-ring-white/10"
+           role="radiogroup" aria-label="Theme">
+        <% [ [ "System", "system", %(<path fill-rule="evenodd" d="M3.5 2.5A1.5 1.5 0 0 0 2 4v6a1.5 1.5 0 0 0 1.5 1.5h9A1.5 1.5 0 0 0 14 10V4a1.5 1.5 0 0 0-1.5-1.5h-9ZM3.5 4h9v6h-9V4Z" clip-rule="evenodd"/><path d="M5.75 12.75a.75.75 0 0 0 0 1.5h4.5a.75.75 0 0 0 0-1.5h-4.5Z"/>) ],
+             [ "Light", "light", %(<path d="M8 1a.75.75 0 0 1 .75.75v1a.75.75 0 0 1-1.5 0v-1A.75.75 0 0 1 8 1ZM8 13.25a.75.75 0 0 1 .75.75v1a.75.75 0 0 1-1.5 0v-1a.75.75 0 0 1 .75-.75ZM15 8a.75.75 0 0 1-.75.75h-1a.75.75 0 0 1 0-1.5h1A.75.75 0 0 1 15 8ZM2.75 8.75h-1a.75.75 0 0 1 0-1.5h1a.75.75 0 0 1 0 1.5ZM12.596 2.343a.75.75 0 0 1 1.061 1.061l-.707.708a.75.75 0 0 1-1.06-1.061l.706-.708ZM3.05 11.889a.75.75 0 0 1 1.06 1.06l-.707.708a.75.75 0 0 1-1.06-1.06l.707-.708ZM13.657 12.597a.75.75 0 0 1-1.06 1.06l-.708-.707a.75.75 0 0 1 1.06-1.06l.708.707ZM4.11 3.05a.75.75 0 0 1-1.06 1.061l-.708-.707a.75.75 0 1 1 1.06-1.061l.708.707ZM11 8a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/>) ],
+             [ "Dark", "dark", %(<path d="M13.22 9.72a5.5 5.5 0 1 1-6.94-6.94 5.5 5.5 0 0 0 6.94 6.94Z"/>) ] ].each do |label, value, icon| %>
+          <button type="button" role="radio" aria-checked="false" aria-label="<%= label %> theme"
+                  data-theme-target="option" data-action="theme#select" data-theme-theme-param="<%= value %>"
+                  class="relative grid size-6 cursor-pointer place-items-center rounded-full text-neutral-500 transition-[color,box-shadow] duration-150 before:absolute before:-inset-x-px before:-inset-y-2 hover:text-neutral-950 aria-checked:text-neutral-950 aria-checked:inset-ring aria-checked:inset-ring-neutral-950/20 dark:hover:text-white dark:aria-checked:text-white dark:aria-checked:inset-ring-white/20">
+            <svg viewBox="0 0 16 16" class="size-4 fill-current" aria-hidden="true"><%= icon.html_safe %></svg>
+          </button>
+        <% end %>
+      </div>
+    </div>
+
     <div class="mx-2.5 my-1 border-t border-neutral-950/5 dark:border-white/5"></div>
-    <%= button_to "Sign out", logout_path, method: :delete, class: item %>
+    <%= link_to "Account settings", account_path, role: "menuitem", class: item %>
+    <%= button_to "Sign out", sign_out_path, method: :delete, role: "menuitem", class: item %>
   </div>
-</details>
+</div>

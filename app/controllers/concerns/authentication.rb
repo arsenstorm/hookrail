@@ -42,6 +42,6 @@ module Authentication
   end
 
   def request_authentication
-    redirect_to login_path
+    redirect_to sign_in_path
   end
 end

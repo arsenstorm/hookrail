@@ -46,9 +46,9 @@ class MetricsUiTest < ActionDispatch::IntegrationTest
     attempt!(event!(source), connection, status: "succeeded", duration_ms: 120)
     attempt!(event!(source), connection, status: "dead")
 
-    get root_path
+    get dashboard_path
     assert_response :ok
-    assert_select "canvas[data-controller=dither-chart]", count: 2
+    assert_select "canvas[data-dither-chart-target=canvas]", count: 2
     assert_select "a[aria-current=page]", text: "24h"
     assert_match "120", response.body
     assert_match "50.0%", response.body
@@ -57,7 +57,7 @@ class MetricsUiTest < ActionDispatch::IntegrationTest
   test "window and sort survive switching" do
     sign_in!
 
-    get root_path(window: "7d", sort: "events")
+    get dashboard_path(window: "7d", sort: "events")
     assert_response :ok
     assert_select "a[aria-current=page]", text: "7d"
     assert_select "nav a[href*=?]", "sort=events", count: 3
@@ -71,7 +71,7 @@ class MetricsUiTest < ActionDispatch::IntegrationTest
     attempt!(event!(source_x), connection_x, status: "dead")
     attempt!(event!(source_y), connection_y, status: "succeeded")
 
-    get root_path
+    get dashboard_path
     assert_response :ok
     cells = css_select("table tbody td:first-child").map(&:text)
     x = cells.index { |text| text.include?(source_x.name) }
