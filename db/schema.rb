@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_26_000003) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_26_075253) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -46,6 +46,37 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_26_000003) do
     t.index ["event_id"], name: "index_attempts_on_event_id"
   end
 
+  create_table "cli_authorizations", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "device_code_digest", null: false
+    t.string "device_name", null: false
+    t.datetime "expires_at", null: false
+    t.bigint "organization_id"
+    t.string "status", default: "pending", null: false
+    t.datetime "updated_at", null: false
+    t.string "user_code", null: false
+    t.bigint "user_id"
+    t.index ["device_code_digest"], name: "index_cli_authorizations_on_device_code_digest", unique: true
+    t.index ["organization_id"], name: "index_cli_authorizations_on_organization_id"
+    t.index ["user_code"], name: "index_cli_authorizations_on_user_code", unique: true
+    t.index ["user_id"], name: "index_cli_authorizations_on_user_id"
+  end
+
+  create_table "cli_tokens", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "last_used_at"
+    t.string "name", null: false
+    t.bigint "organization_id", null: false
+    t.string "prefix", null: false
+    t.datetime "revoked_at"
+    t.string "token_digest", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["organization_id"], name: "index_cli_tokens_on_organization_id"
+    t.index ["token_digest"], name: "index_cli_tokens_on_token_digest", unique: true
+    t.index ["user_id"], name: "index_cli_tokens_on_user_id"
+  end
+
   create_table "connections", force: :cascade do |t|
     t.boolean "active", default: true, null: false
     t.integer "consecutive_failures", default: 0, null: false
@@ -70,6 +101,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_26_000003) do
   create_table "destinations", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.jsonb "headers", default: {}, null: false
+    t.string "kind", default: "http", null: false
     t.string "name", null: false
     t.bigint "project_id", null: false
     t.integer "rate_limit"
@@ -78,7 +110,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_26_000003) do
     t.datetime "rate_window_started_at"
     t.string "signing_secret", null: false
     t.datetime "updated_at", null: false
-    t.string "url", null: false
+    t.string "url"
     t.index ["project_id"], name: "index_destinations_on_project_id"
     t.index ["signing_secret"], name: "index_destinations_on_signing_secret", unique: true
   end
@@ -351,6 +383,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_26_000003) do
   add_foreign_key "api_keys", "organizations"
   add_foreign_key "attempts", "connections"
   add_foreign_key "attempts", "events"
+  add_foreign_key "cli_authorizations", "organizations"
+  add_foreign_key "cli_authorizations", "users"
+  add_foreign_key "cli_tokens", "organizations"
+  add_foreign_key "cli_tokens", "users"
   add_foreign_key "connections", "destinations"
   add_foreign_key "connections", "projects"
   add_foreign_key "connections", "sources"

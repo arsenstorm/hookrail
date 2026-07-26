@@ -3,6 +3,7 @@ class ApiKeysController < ApplicationController
 
   def index
     @api_keys = Current.organization.api_keys.order(created_at: :desc)
+    @cli_tokens = Current.organization.cli_tokens.active.includes(:user).order(created_at: :desc)
   end
 
   def create

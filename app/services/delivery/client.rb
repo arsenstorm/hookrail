@@ -21,6 +21,10 @@ module Delivery
       new(event, destination, replay, transformed).deliver
     end
 
+    def self.payload_for(event:, destination:, replay: false, transformed: nil)
+      new(event, destination, replay, transformed).payload
+    end
+
     def initialize(event, destination, replay = false, transformed = nil)
       @event = event
       @destination = destination
@@ -30,8 +34,7 @@ module Delivery
 
     def deliver
       uri = URI.parse(@destination.url)
-      body = @transformed ? @transformed[:body] : @event.body.to_s
-      request = build_request(uri, body)
+      request = build_request(uri, payload)
 
       http = Net::HTTP.new(uri.host, uri.port)
       http.use_ssl = (uri.scheme == "https")
@@ -55,27 +58,31 @@ module Delivery
       )
     end
 
+    # Everything the wire needs, before transport: forwarded headers minus the
+    # skip lists, destination overrides, signing, and the (possibly
+    # transformed) body. Shared by the HTTP client and the CLI tunnel
+    # broadcast so both sign and filter identically.
+    def payload
+      body = @transformed ? @transformed[:body] : @event.body.to_s
+      headers = {}
+      (@transformed ? @transformed[:headers] : @event.headers).each do |name, value|
+        headers[name] = value.to_s if forwardable?(name)
+      end
+      @destination.headers.each { |name, value| headers[name] = value.to_s }
+      timestamp = Time.current.to_i.to_s
+      headers["X-Hookrail-Timestamp"] = timestamp
+      headers["X-Hookrail-Signature"] = "sha256=#{signature(body, timestamp)}"
+      headers["X-Hookrail-Replay"] = "true" if @replay
+      { http_method: @event.http_method, path: @event.path, query_string: @event.query_string,
+        headers: headers, body: body }
+    end
+
     private
 
-    def build_request(uri, body)
+    def build_request(uri, payload)
       request = http_method_class.new(uri)
-
-      # Forward the original inbound headers (Content-Type, etc.), minus hop-by-hop.
-      # A transform's headers replace the forwarded set entirely, but the same
-      # filter applies: a transform must not smuggle in Host/Content-Length.
-      (@transformed ? @transformed[:headers] : @event.headers).each do |name, value|
-        next unless forwardable?(name)
-        request[name] = value.to_s
-      end
-
-      # Destination's static headers override anything forwarded.
-      @destination.headers.each { |name, value| request[name] = value.to_s }
-
-      timestamp = Time.current.to_i.to_s
-      request["X-Hookrail-Timestamp"] = timestamp
-      request["X-Hookrail-Signature"] = "sha256=#{signature(body, timestamp)}"
-      request["X-Hookrail-Replay"] = "true" if @replay
-      request.body = body
+      payload[:headers].each { |name, value| request[name] = value }
+      request.body = payload[:body]
       request
     end
 

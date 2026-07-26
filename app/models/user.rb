@@ -1,6 +1,7 @@
 class User < ApplicationRecord
   has_one :organization, foreign_key: :owner_id, inverse_of: :owner, dependent: :destroy
   has_many :memberships, dependent: :destroy
+  has_many :cli_tokens, dependent: :destroy
 
   validates :github_uid, presence: true, uniqueness: true
 

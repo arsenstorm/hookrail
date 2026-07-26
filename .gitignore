@@ -38,3 +38,6 @@
 
 # Allow example environment files.
 !.env*.example
+
+# Rust CLI build artifacts.
+/cli/target/

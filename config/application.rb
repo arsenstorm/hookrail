@@ -27,5 +27,10 @@ module Hookrail
     #
     # config.time_zone = "Central Time (US & Canada)"
     # config.eager_load_paths << Rails.root.join("extras")
+
+    # Cable auth is a bearer Authorization header (see ApplicationCable::Connection),
+    # never a cookie session, so origin forgery has nothing to ride on — and CLI
+    # clients connect without a browser Origin.
+    config.action_cable.disable_request_forgery_protection = true
   end
 end

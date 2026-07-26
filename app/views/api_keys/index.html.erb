@@ -55,4 +55,39 @@
       </tbody>
     </table>
   <% end %>
+
+  <div class="flex items-center justify-between mt-12 mb-6">
+    <h2 class="text-xl font-semibold">CLI tokens</h2>
+  </div>
+
+  <% if @cli_tokens.empty? %>
+    <p class="text-gray-500">No CLI tokens yet. Run <code>hookrail login</code> to authorize one.</p>
+  <% else %>
+    <table class="w-full text-sm">
+      <thead class="text-left text-gray-500 border-b">
+        <tr>
+          <th class="py-2 font-medium">Name</th>
+          <th class="py-2 font-medium">Token</th>
+          <th class="py-2 font-medium">User</th>
+          <th class="py-2 font-medium">Last used</th>
+          <th class="py-2 font-medium"></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @cli_tokens.each do |cli_token| %>
+          <tr class="border-b hover:bg-gray-50">
+            <td class="py-2"><%= cli_token.name %></td>
+            <td class="py-2 font-mono text-xs"><%= cli_token.prefix %>…</td>
+            <td class="py-2"><%= cli_token.user.github_login %></td>
+            <td class="py-2"><%= cli_token.last_used_at&.strftime("%Y-%m-%d %H:%M") || "never" %></td>
+            <td class="py-2 text-right">
+              <%= button_to "Revoke", cli_token_path(cli_token), method: :delete,
+                    class: "text-red-600 hover:underline text-sm cursor-pointer", form: { class: "inline" },
+                    data: { turbo_confirm: "Revoke this CLI token? Anything using it stops working immediately." } %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  <% end %>
 </div>

@@ -37,6 +37,11 @@ Rails.application.routes.draw do
   # Org-scoped API keys managed in the UI; the JSON API below authenticates with them.
   resources :api_keys, only: %i[index create destroy]
 
+  # Browser half of the CLI device-flow login.
+  get  "cli/authorize", to: "cli_authorizations#show",   as: :cli_authorize
+  post "cli/authorize", to: "cli_authorizations#create"
+  resources :cli_tokens, only: :destroy
+
   # One alert webhook per org, mirrored by the JSON API.
   resource :alert_webhook, only: %i[show update destroy] do
     post :test
@@ -71,6 +76,16 @@ Rails.application.routes.draw do
           post :bulk_retry, to: "bulk_retries#create"
           post :bulk_replay, to: "bulk_replays#create"
         end
+      end
+
+      namespace :cli do
+        resources :device_authorizations, only: :create do
+          collection { post :token }
+        end
+        get    "whoami", to: "sessions#whoami"
+        delete "token",  to: "sessions#destroy"
+        resources :listeners, only: :create
+        post "attempts/:attempt_id/result", to: "attempt_results#create"
       end
     end
   end

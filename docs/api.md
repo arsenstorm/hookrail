@@ -29,11 +29,13 @@ exist: `404`. Nothing about them is leaked.
 | --- | --- | --- |
 | 400 | `bad_request` | Request body is missing the resource wrapper. |
 | 401 | `unauthorized` | Missing, malformed, unknown, or revoked key. |
+| 403 | `forbidden` | A CLI (`hkc_`) token's user lacks project access, or lacks editor rights for a write. |
 | 404 | `not_found` | Unknown id, or an id owned by another organization. |
 | 422 | `validation_failed` | Write rejected; `message` is the model's error sentence. |
 | 422 | `not_retryable` | The delivery's latest attempt is not `failed` or `dead`. |
 | 422 | `connection_not_active` | The target connection is paused or disabled. |
 | 422 | `transformation_failed` | Preview code threw, timed out, or returned a non-object. |
+| 410 | `authorization_gone` | Device-flow poll for a device code that's invalid, expired, or denied. |
 
 Write bodies are wrapped in the resource name (`{"source": {...}}`). A JSON body without the wrapper is
 wrapped automatically; other bodies without it return `400`.
@@ -521,3 +523,199 @@ curl -X PUT https://hookrail.dev/api/v1/retention \
   }
 }
 ```
+
+## CLI authentication
+
+Two kinds of bearer credential are accepted, both as `Authorization: Bearer ...`:
+
+| Prefix | Issued by | Scope |
+| --- | --- | --- |
+| `hk_` | The dashboard, by an org admin | The whole organization, full access |
+| `hkc_` | The CLI device-flow login below | One user, one device — enforces that user's project role (viewer: read-only, editor: read/write, no grant: `403`) |
+
+A `hkc_` token stops working the moment the issuing membership is removed from the organization, even though
+the token row itself is untouched.
+
+### Device authorization flow
+
+GitHub-CLI-style: the CLI starts an authorization, shows the user an 8-character code, the user approves it
+in the dashboard, and the CLI polls until it receives a token.
+
+`POST /api/v1/cli/device_authorizations` — no auth required.
+
+| Param | Meaning |
+| --- | --- |
+| `device_name` | Optional, shown to the approving user. Defaults to `"unknown device"`, truncated to 80 characters. |
+
+```sh
+curl -X POST https://hookrail.dev/api/v1/cli/device_authorizations \
+  -H "Content-Type: application/json" \
+  -d '{"device_name":"arsen'\''s laptop"}'
+```
+
+```json
+{
+  "device_code": "5f3a...",
+  "user_code": "BCDF-2345",
+  "verification_url": "https://hookrail.dev/cli/authorize?code=BCDF-2345",
+  "expires_in": 900,
+  "interval": 5
+}
+```
+
+Send the user to `verification_url` (or have them type `user_code` in at `/cli/authorize`). While they decide,
+poll:
+
+`POST /api/v1/cli/device_authorizations/token` — no auth required.
+
+| Param | Meaning |
+| --- | --- |
+| `device_code` | **Required.** From the response above. |
+
+| Status | Meaning |
+| --- | --- |
+| `202` `{"status":"pending"}` | Not yet approved or denied. Poll again after `interval` seconds. |
+| `410` `authorization_gone` | Invalid, expired, or denied — these read identically on purpose. Stop polling and start over. |
+| `200` | Approved. The token is returned exactly once; polling again after this is `410`. |
+
+```json
+{
+  "token": "hkc_...",
+  "organization": {"id": 3, "name": "Acme"}
+}
+```
+
+```sh
+curl -X POST https://hookrail.dev/api/v1/cli/device_authorizations/token \
+  -H "Content-Type: application/json" \
+  -d '{"device_code":"5f3a..."}'
+```
+
+### Whoami
+
+`GET /api/v1/cli/whoami` — identifies the credential in use, for either kind.
+
+```sh
+curl https://hookrail.dev/api/v1/cli/whoami -H "Authorization: Bearer $HOOKRAIL_TOKEN"
+```
+
+```json
+{
+  "user": {"github_login": "arsen", "name": "Arsen"},
+  "organization": {"id": 3, "name": "Acme"},
+  "token": {"kind": "cli", "prefix": "hkc_5f3a2b1c", "name": "arsen's laptop"}
+}
+```
+
+`user` is `null` and `token` is `{"kind":"api_key"}` when authenticated with an `hk_` API key instead.
+
+### Revoke the current CLI token
+
+`DELETE /api/v1/cli/token` — revokes the `hkc_` token used on the request itself; `204` with no body. `400`
+`bad_request` if the credential was an `hk_` API key instead.
+
+```sh
+curl -X DELETE https://hookrail.dev/api/v1/cli/token -H "Authorization: Bearer $HOOKRAIL_TOKEN"
+```
+
+## CLI tunnel
+
+`hookrail listen` forwards events to `localhost` over a live websocket instead of an HTTP destination. A
+destination created this way has `"kind":"cli"` and no `url`; deliveries to it are broadcast to the connected
+CLI process rather than sent by the server.
+
+### Start a listener
+
+`POST /api/v1/cli/listeners` — find-or-create the CLI destination and connection for a source. Idempotent:
+calling it again for the same source (and user) returns the same `destination_id`/`connection_id`. Requires
+an `hkc_` token with editor rights on the project.
+
+| Param | Meaning |
+| --- | --- |
+| `source` | **Required.** Id of the source to tunnel. |
+| `device_name` | Optional, used to name the destination when the token has no attached GitHub login. |
+
+```sh
+curl -X POST https://hookrail.dev/api/v1/cli/listeners \
+  -H "Authorization: Bearer $HOOKRAIL_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"source":12}'
+```
+
+```json
+{
+  "source": {"id": 12, "name": "Stripe"},
+  "destination_id": 91,
+  "connection_id": 340,
+  "websocket_url": "wss://hookrail.dev/cable",
+  "subscription": {"channel": "CliChannel", "connection_id": 340}
+}
+```
+
+### The websocket
+
+Connect to `websocket_url` with the same `Authorization: Bearer hkc_...` header used everywhere else — Cable
+auth is the bearer header, not a cookie session. Then subscribe to `CliChannel`:
+
+```json
+{"command": "subscribe", "identifier": "{\"channel\":\"CliChannel\",\"connection_id\":340}"}
+```
+
+A rejected subscription means the connection id doesn't belong to your organization, or its destination isn't
+`kind: "cli"`. While subscribed, send a `heartbeat` action at least every 30 seconds — the subscription itself
+marks the session online, but presence has a TTL and needs periodic refreshing to stay that way:
+
+```json
+{"command": "message", "identifier": "{\"channel\":\"CliChannel\",\"connection_id\":340}", "data": "{\"action\":\"heartbeat\"}"}
+```
+
+Every delivery routed to the connection arrives as a broadcast on the subscription:
+
+```json
+{
+  "attempt_id": 5821,
+  "retry_count": 0,
+  "event_id": 4471,
+  "forward": {
+    "http_method": "POST",
+    "path": "/wh",
+    "query_string": null,
+    "headers": {"Content-Type": "application/json", "X-Hookrail-Timestamp": "...", "X-Hookrail-Signature": "sha256=..."},
+    "body": "{...}"
+  }
+}
+```
+
+`forward` is filtered and signed exactly like an HTTP destination's outbound request — replay the headers and
+body as-is against `localhost`.
+
+### Report the result
+
+`POST /api/v1/cli/attempts/:attempt_id/result` — after forwarding, report what `localhost` said.
+
+| Param | Meaning |
+| --- | --- |
+| `retry_count` | Echo back the `retry_count` from the broadcast. |
+| `status` | The local server's HTTP status code. 200–299 is success, anything else is a failure. |
+| `body_excerpt` | First bytes of the local response body. |
+| `error` | Set instead of/alongside `status` when the local request itself failed (connection refused, timeout, etc). |
+| `duration_ms` | How long the local request took. |
+
+```sh
+curl -X POST https://hookrail.dev/api/v1/cli/attempts/5821/result \
+  -H "Authorization: Bearer $HOOKRAIL_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"retry_count":0,"status":200,"body_excerpt":"ok","duration_ms":12}'
+```
+
+```json
+{"status": "succeeded"}
+```
+
+A result posted for an attempt that's already resolved (a repeat, or one that already timed out) just returns
+the final status — no error, no duplicate side effects.
+
+If no result arrives within 30 seconds of the broadcast, the attempt is failed automatically (as if `localhost`
+were unreachable) and re-enters the same retry/backoff chain as an HTTP destination — same `MAX_ATTEMPTS`,
+same connection health tracking. A dropped `hookrail listen` process therefore degrades exactly like a
+destination that stopped responding, never a stuck delivery.

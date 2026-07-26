@@ -37,7 +37,7 @@ module Api
       end
 
       def destination_json(destination)
-        destination.as_json(only: %i[id name url rate_limit rate_limit_period headers created_at updated_at])
+        destination.as_json(only: %i[id name url kind rate_limit rate_limit_period headers created_at updated_at])
       end
     end
   end

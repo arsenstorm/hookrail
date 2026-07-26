@@ -1,0 +1,227 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+# End-to-end check that the compiled `hookrail` CLI and this Rails server
+# actually speak the same wire dialect: the Action Cable handshake, the
+# broadcast shape the CLI parses, the HMAC-signed forward it replays to a
+# local port, and the result round-trip back to the API. Unit/integration
+# tests exercise each side in isolation and would happily pass while the two
+# drifted apart; this runs both binaries for real against each other.
+#
+# Runs in RAILS_ENV=development (implicit, unset here) rather than test:
+# config/cable.yml gives the test environment the `test` cable adapter, which
+# never opens a real websocket. `development` gets `async` cable and (by
+# Rails default) async Active Job, both in-process with the server — exactly
+# what a same-process harness needs. DATABASE_URL below overrides
+# config/database.yml so all of this runs against a scratch database instead
+# of hookrail_development.
+#
+# Every wait below is a poll with a deadline; nothing sleeps longer than 2s.
+
+export DATABASE_URL="${E2E_DATABASE_URL:-postgres://localhost/hookrail_e2e_cli}"
+
+fail() {
+  echo "e2e-cli: FAIL — $1" >&2
+  exit 1
+}
+
+alloc_port() {
+  ruby -rsocket -e 'srv = TCPServer.new("127.0.0.1", 0); puts srv.addr[1]; srv.close'
+}
+SERVER_PORT="$(alloc_port)"
+RECEIVER_PORT="$(alloc_port)"
+
+TMP="$(mktemp -d)"
+PIDS=()
+
+cleanup() {
+  local status=$?
+  if [ "${#PIDS[@]}" -gt 0 ]; then
+    kill "${PIDS[@]}" 2>/dev/null || true
+    wait "${PIDS[@]}" 2>/dev/null || true # reap quietly: no job-control noise after PASS
+  fi
+  if [ "$status" -ne 0 ]; then
+    echo "---- server.log (last 40 lines) ----" >&2
+    tail -40 "$TMP/server.log" >&2 2>/dev/null || true
+  fi
+  # Safe even on a fresh/never-created DB: DATABASE_URL scopes this to the
+  # scratch database, never hookrail_development.
+  bin/rails db:drop 2>/dev/null || true
+  rm -rf "$TMP"
+  exit "$status"
+}
+trap cleanup EXIT
+
+bin/rails db:prepare
+
+# One runner boot seeds everything and prints exactly two lines, which we
+# eval straight into shell variables.
+SEED_OUTPUT="$(bin/rails runner - <<'RUBY'
+user = User.find_or_create_by!(github_uid: "e2e-cli-uid") do |u|
+  u.github_login = "e2e-cli"
+  u.email = "e2e-cli@example.test"
+end
+org = user.ensure_org_and_project!
+project = org.projects.first
+source = project.sources.find_or_create_by!(name: "E2eSrc")
+_token, raw = CliToken.issue!(user: user, organization: org, name: "e2e-cli")
+
+puts "SOURCE_TOKEN=#{source.token}"
+puts "CLI_TOKEN=#{raw}"
+RUBY
+)"
+eval "$SEED_OUTPUT"
+[ -n "${SOURCE_TOKEN:-}" ] || fail "seed runner did not print SOURCE_TOKEN"
+[ -n "${CLI_TOKEN:-}" ] || fail "seed runner did not print CLI_TOKEN"
+
+# A minimal HTTP/1.1 receiver standing in for the user's local service: records
+# the last request's headers and exact raw body, then answers 200.
+cat > "$TMP/receiver.rb" <<'RUBY'
+require "socket"
+
+port = ARGV[0].to_i
+tmp = ARGV[1]
+server = TCPServer.new("127.0.0.1", port)
+
+loop do
+  client = server.accept
+  request_line = client.gets.to_s.chomp
+
+  headers = []
+  content_length = 0
+  while (line = client.gets)
+    line = line.sub(/\r?\n\z/, "")
+    break if line.empty?
+    headers << line
+    if line =~ /\Acontent-length:\s*(\d+)\z/i
+      content_length = $1.to_i
+    end
+  end
+
+  body = content_length.positive? ? client.read(content_length).to_s : ""
+
+  File.write("#{tmp}/last_request_headers.txt", ([request_line] + headers).join("\n") + "\n")
+  File.binwrite("#{tmp}/last_request_body.txt", body)
+
+  response_body = '{"received":true}'
+  client.write(
+    "HTTP/1.1 200 OK\r\n" \
+    "Content-Type: application/json\r\n" \
+    "Content-Length: #{response_body.bytesize}\r\n" \
+    "Connection: close\r\n\r\n#{response_body}"
+  )
+  client.close
+rescue IOError, Errno::ECONNRESET
+  next
+end
+RUBY
+ruby "$TMP/receiver.rb" "$RECEIVER_PORT" "$TMP" >"$TMP/receiver.log" 2>&1 &
+PIDS+=($!)
+
+bin/rails server -p "$SERVER_PORT" --pid "$TMP/server.pid" >"$TMP/server.log" 2>&1 &
+PIDS+=($!)
+
+deadline=$((SECONDS + 60))
+until curl -sf -o /dev/null "http://127.0.0.1:$SERVER_PORT/up"; do
+  [ "$SECONDS" -lt "$deadline" ] || fail "server did not answer 200 on /up within 60s"
+  sleep 1
+done
+
+(cd cli && cargo build --quiet)
+BIN="cli/target/debug/hookrail"
+
+# Negative case first: a syntactically valid but unknown token must be
+# rejected before any listener is registered. Not using `timeout`/`gtimeout`
+# — neither ships on macOS by default.
+HOOKRAIL_API_KEY=hkc_deadbeefdeadbeef "$BIN" --server "http://127.0.0.1:$SERVER_PORT" \
+  listen "$RECEIVER_PORT" --source E2eSrc >/dev/null 2>"$TMP/neg.log" &
+neg_pid=$!
+
+neg_alive=1
+for _ in $(seq 1 20); do
+  if ! kill -0 "$neg_pid" 2>/dev/null; then
+    neg_alive=0
+    break
+  fi
+  sleep 1
+done
+if [ "$neg_alive" -eq 1 ]; then
+  kill "$neg_pid" 2>/dev/null || true
+  fail "bad token did not exit within 20s"
+fi
+
+neg_status=0
+wait "$neg_pid" || neg_status=$?
+[ "$neg_status" -ne 0 ] || fail "bad token exited 0, expected a non-zero exit"
+grep -q "Not logged in" "$TMP/neg.log" || fail "bad-token stderr missing 'Not logged in': $(cat "$TMP/neg.log")"
+
+# Positive case: the real CLI token, listening for real.
+HOOKRAIL_API_KEY="$CLI_TOKEN" "$BIN" --server "http://127.0.0.1:$SERVER_PORT" \
+  listen "$RECEIVER_PORT" --source E2eSrc >"$TMP/listen.log" 2>&1 &
+PIDS+=($!)
+sleep 2 # subscription head start; the retry chain covers any remaining race
+
+curl -sf -X POST "http://127.0.0.1:$SERVER_PORT/ingest/$SOURCE_TOKEN" \
+  -H "Content-Type: application/json" -d '{"e2e":"transport"}'
+
+# Poll internally (one boot, not a runner per poll) until the delivery
+# finalizes, then check the reported status.
+bin/rails runner - <<'RUBY' || fail "delivery did not reach a succeeded attempt with status 200 within 60s"
+source = Source.find_by!(name: "E2eSrc")
+connection = Connection.joins(:destination)
+                       .where(source_id: source.id, destinations: { kind: "cli" }).first!
+
+deadline = Time.now + 60
+attempt = nil
+loop do
+  attempt = connection.attempts.order(:attempt_number).last
+  break if attempt&.succeeded?
+  if Time.now > deadline
+    puts "e2e-cli: delivery verdict — no succeeded attempt (last status=#{attempt&.status.inspect})"
+    exit 1
+  end
+  sleep 1
+end
+
+if attempt.response_status == 200
+  puts "e2e-cli: delivery verdict — attempt #{attempt.id} succeeded with status 200"
+else
+  puts "e2e-cli: delivery verdict — succeeded but response_status=#{attempt.response_status.inspect}, expected 200"
+  exit 1
+end
+RUBY
+
+# The receiver must have seen the exact, HMAC-signed forward.
+sig_line="$(grep -i '^x-hookrail-signature:' "$TMP/last_request_headers.txt" | head -1)"
+ts_line="$(grep -i '^x-hookrail-timestamp:' "$TMP/last_request_headers.txt" | head -1)"
+[ -n "$sig_line" ] || fail "receiver never saw an X-Hookrail-Signature header"
+[ -n "$ts_line" ] || fail "receiver never saw an X-Hookrail-Timestamp header"
+sig="$(printf '%s' "$sig_line" | sed -E 's/^[^:]*:[[:space:]]*//' | tr -d '\r\n')"
+ts="$(printf '%s' "$ts_line" | sed -E 's/^[^:]*:[[:space:]]*//' | tr -d '\r\n')"
+
+body="$(cat "$TMP/last_request_body.txt")"
+[ "$body" = '{"e2e":"transport"}' ] || fail "receiver body mismatch: got [$body]"
+
+E2E_TS="$ts" E2E_SIG="$sig" E2E_BODY_PATH="$TMP/last_request_body.txt" \
+  bin/rails runner - <<'RUBY' || fail "recomputed HMAC signature did not match X-Hookrail-Signature"
+require "openssl"
+
+source = Source.find_by!(name: "E2eSrc")
+destination = Connection.joins(:destination)
+                        .where(source_id: source.id, destinations: { kind: "cli" }).first!.destination
+
+body = File.binread(ENV.fetch("E2E_BODY_PATH"))
+timestamp = ENV.fetch("E2E_TS")
+signature = ENV.fetch("E2E_SIG")
+expected = "sha256=#{OpenSSL::HMAC.hexdigest("SHA256", destination.signing_secret, "#{timestamp}.#{body}")}"
+
+if signature == expected
+  puts "e2e-cli: signature verdict — matches"
+else
+  puts "e2e-cli: signature verdict — mismatch (expected #{expected}, got #{signature})"
+  exit 1
+end
+RUBY
+
+echo "e2e-cli: PASS"

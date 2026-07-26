@@ -1,0 +1,35 @@
+<% content_for :title, "Authorize CLI" %>
+<div class="w-full max-w-md mx-auto py-16">
+  <h1 class="text-2xl font-semibold mb-6">Authorize CLI</h1>
+
+  <p class="text-sm text-gray-600 mb-6">
+    This grants the CLI access to <%= Current.organization.name %> with your role.
+  </p>
+
+  <% if @authorization %>
+    <div class="mb-6 space-y-3 rounded-md border border-gray-300 px-3 py-3">
+      <div>
+        <span class="block text-xs font-medium text-gray-500">Device</span>
+        <span class="block text-sm"><%= @authorization.device_name %></span>
+      </div>
+      <div>
+        <span class="block text-xs font-medium text-gray-500">Code</span>
+        <span class="block font-mono text-lg"><%= @authorization.user_code %></span>
+      </div>
+    </div>
+
+    <%= form_with url: cli_authorize_path, method: :post, class: "flex items-center gap-2" do %>
+      <%= hidden_field_tag :code, @authorization.user_code %>
+      <%= button_tag "Approve", name: "decision", value: "approve",
+            class: "rounded-md bg-blue-600 text-white px-3 py-2 text-sm hover:bg-blue-700 cursor-pointer" %>
+      <%= button_tag "Deny", name: "decision", value: "deny",
+            class: "rounded-md border border-gray-300 px-3 py-2 text-sm hover:bg-gray-50 cursor-pointer" %>
+    <% end %>
+  <% else %>
+    <%= form_with url: cli_authorize_path, method: :post, class: "flex items-center gap-2" do %>
+      <%= text_field_tag :code, @code, placeholder: "XXXX-XXXX",
+            class: "w-40 rounded-md border border-gray-300 px-3 py-2 text-sm font-mono uppercase" %>
+      <%= submit_tag "Continue", class: "rounded-md bg-blue-600 text-white px-3 py-2 text-sm hover:bg-blue-700 cursor-pointer" %>
+    <% end %>
+  <% end %>
+</div>

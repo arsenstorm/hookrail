@@ -4,6 +4,9 @@ class PruneOldRecordsJob < ApplicationJob
   BATCH_SIZE = 1000
 
   def perform(batch_size: BATCH_SIZE)
+    stale_authorizations = CliAuthorization.where(expires_at: ...1.day.ago).delete_all
+    Rails.logger.info("PruneOldRecordsJob deleted stale cli_authorizations=#{stale_authorizations}")
+
     Organization.find_each do |org|
       cutoff = org.retention_days.days.ago
       source_ids = Source.joins(:project).where(projects: { organization_id: org.id }).select(:id)

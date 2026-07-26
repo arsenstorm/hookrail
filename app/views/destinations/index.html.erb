@@ -29,7 +29,7 @@
               <%= link_to destination.name, destination_path(destination), class: "text-blue-600 hover:underline" %>
             </td>
             <td class="py-2">
-              <span class="text-xs text-gray-500"><%= destination.url %></span>
+              <span class="text-xs text-gray-500"><%= destination.kind_cli? ? "Local CLI session" : destination.url %></span>
             </td>
             <td class="py-2"><%= destination.created_at.strftime("%Y-%m-%d %H:%M") %></td>
             <td class="py-2">

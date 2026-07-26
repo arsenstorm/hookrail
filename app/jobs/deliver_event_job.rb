@@ -50,6 +50,11 @@ class DeliverEventJob < ApplicationJob
                                 transformed_body: transformed[:body])
     end
 
+    if connection.destination.kind_cli?
+      deliver_via_cli(attempt, event, connection, replay, retry_count, transformed)
+      return
+    end
+
     result = Delivery::Client.deliver(event: event, destination: connection.destination,
                                       replay: replay, transformed: transformed)
 
@@ -73,7 +78,7 @@ class DeliverEventJob < ApplicationJob
       raise DeliveryError
     end
   rescue DeliveryError
-    retry_or_bury(event, connection, replay, retry_count)
+    self.class.retry_or_bury(event, connection, replay, retry_count)
   rescue ActiveRecord::RecordNotFound
     raise
   rescue StandardError => e
@@ -85,10 +90,59 @@ class DeliverEventJob < ApplicationJob
       attempt.update!(status: :failed, error: "#{e.class}: #{e.message}")
       connection.record_delivery_failure
     end
-    retry_or_bury(event, connection, replay, retry_count)
+    self.class.retry_or_bury(event, connection, replay, retry_count)
+  end
+
+  # Also called by the CLI tunnel finalizers (result endpoint, timeout job),
+  # which learn the outcome long after the delivering job has exited.
+  def self.retry_or_bury(event, connection, replay, retry_count)
+    retries_done = retry_count + 1
+    if retries_done < max_attempts_for(connection)
+      set(wait: wait_for(connection, retries_done))
+        .perform_later(event.id, connection.id, replay: replay, retry_count: retries_done)
+    else
+      Attempt.where(event_id: event.id, connection_id: connection.id)
+             .order(:attempt_number).last&.update!(status: :dead)
+    end
+  end
+
+  def self.max_attempts_for(connection)
+    connection.retry_policy.present? ? connection.retry_policy["max_attempts"] : MAX_ATTEMPTS
+  end
+
+  # Wait before attempt retries_done + 1: linear repeats the interval,
+  # exponential doubles it each retry starting from the interval.
+  def self.wait_for(connection, retries_done)
+    policy = connection.retry_policy
+    if policy.present?
+      interval = policy["interval"].seconds
+      policy["strategy"] == "exponential" ? interval * (2**(retries_done - 1)) : interval
+    else
+      BACKOFF[retries_done - 1] || BACKOFF.last
+    end
   end
 
   private
+
+  # CLI-bound deliveries hand off to a live `hookrail listen` session over
+  # Action Cable and finish later: the CLI posts the outcome back, or
+  # CliAttemptTimeoutJob fails the attempt. No live session = an ordinary
+  # failure that re-enters the retry chain.
+  def deliver_via_cli(attempt, event, connection, replay, retry_count, transformed)
+    unless CliPresence.online?(connection.id)
+      attempt.update!(status: :failed, error: "No CLI session is listening")
+      connection.record_delivery_failure
+      raise DeliveryError
+    end
+
+    payload = Delivery::Client.payload_for(event: event, destination: connection.destination,
+                                           replay: replay, transformed: transformed)
+    attempt.save! # persist transformed_headers/body assigned above while the result is pending
+    ActionCable.server.broadcast("cli_connection_#{connection.id}",
+                                 { attempt_id: attempt.id, retry_count: retry_count,
+                                   event_id: event.id, forward: payload })
+    CliAttemptTimeoutJob.set(wait: CliAttemptTimeoutJob::TIMEOUT).perform_later(attempt.id, retry_count)
+  end
 
   # A non-active connection neither sends nor fails anything: no HTTP, no
   # failure counters, no alerts. Paused keeps the delivery as a :held slot
@@ -111,36 +165,6 @@ class DeliverEventJob < ApplicationJob
     end
   rescue ActiveRecord::RecordNotUnique
     # Concurrent jobs raced to hold the same slot; one held row is enough.
-  end
-
-  # This run was delivery attempt number retry_count + 1. Under the
-  # connection's attempt budget, schedule the next try per its policy
-  # (default: BACKOFF); over it, the delivery is permanently dead.
-  def retry_or_bury(event, connection, replay, retry_count)
-    retries_done = retry_count + 1
-    if retries_done < max_attempts_for(connection)
-      self.class.set(wait: wait_for(connection, retries_done))
-          .perform_later(event.id, connection.id, replay: replay, retry_count: retries_done)
-    else
-      Attempt.where(event_id: event.id, connection_id: connection.id)
-             .order(:attempt_number).last&.update!(status: :dead)
-    end
-  end
-
-  def max_attempts_for(connection)
-    connection.retry_policy.present? ? connection.retry_policy["max_attempts"] : MAX_ATTEMPTS
-  end
-
-  # Wait before attempt retries_done + 1: linear repeats the interval,
-  # exponential doubles it each retry starting from the interval.
-  def wait_for(connection, retries_done)
-    policy = connection.retry_policy
-    if policy.present?
-      interval = policy["interval"].seconds
-      policy["strategy"] == "exponential" ? interval * (2**(retries_done - 1)) : interval
-    else
-      BACKOFF[retries_done - 1] || BACKOFF.last
-    end
   end
 
   # A manual retry pre-creates a :pending attempt to claim the delivery slot (Slice 5 R5).

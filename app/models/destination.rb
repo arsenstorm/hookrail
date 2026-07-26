@@ -3,10 +3,14 @@ class Destination < ApplicationRecord
   has_many :connections, dependent: :destroy
 
   validates :name, presence: true
-  validates :url, presence: true
+  validates :url, presence: true, if: :kind_http?
 
   # Secret used to HMAC-sign forwarded payloads; auto-generated, DB unique index enforces integrity.
   has_secure_token :signing_secret
+
+  # "http" destinations POST to a URL; "cli" destinations stream to a live
+  # `hookrail listen` session and are created by the CLI, not the form.
+  enum :kind, { http: "http", cli: "cli" }, prefix: true, validate: true
 
   RATE_LIMIT_RANGES = { "second" => 1..100, "minute" => 1..6000 }.freeze
 
