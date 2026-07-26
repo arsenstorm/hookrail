@@ -12,11 +12,16 @@ class Organization < ApplicationRecord
   validates :alert_webhook_url, format: { with: %r{\Ahttps?://\S+\z}i, message: "must be an http(s) URL" },
             allow_blank: true
 
+  validates :slack_webhook_url, :discord_webhook_url,
+            format: { with: %r{\Ahttps?://\S+\z}i, message: "must be an http(s) URL" }, allow_blank: true
+
   validates :retention_days, inclusion: { in: [ 7, 30, 90 ], message: "must be 7, 30, or 90 days" }
 
   # The secret lives and dies with the URL: generated when a URL is first set,
   # cleared when it is removed, kept across URL edits so receivers don't break.
   before_validation do
+    self.slack_webhook_url = slack_webhook_url.presence
+    self.discord_webhook_url = discord_webhook_url.presence
     self.alert_webhook_url = alert_webhook_url.presence
     if alert_webhook_url.blank?
       self.alert_webhook_secret = nil
@@ -26,6 +31,7 @@ class Organization < ApplicationRecord
   end
 
   def alert_webhook_configured? = alert_webhook_url.present?
+  def chat_webhook_configured? = slack_webhook_url.present? || discord_webhook_url.present?
 
   # Owners and admins with a known address — GitHub OAuth may withhold emails.
   def alert_recipients

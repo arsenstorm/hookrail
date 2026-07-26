@@ -3,6 +3,7 @@ class Connection < ApplicationRecord
   belongs_to :source
   belongs_to :destination
   has_many :attempts, dependent: :destroy
+  has_many :issues, as: :subject, dependent: :destroy
 
   UNHEALTHY_THRESHOLD = 5
   RULE_KEYS = %w[path http_method headers body].freeze
@@ -34,7 +35,13 @@ class Connection < ApplicationRecord
     claimed = self.class.where(id: id, unhealthy_since: nil)
                   .where(consecutive_failures: UNHEALTHY_THRESHOLD..)
                   .update_all(unhealthy_since: Time.current)
-    Alerts.connection_unhealthy(reload) if claimed == 1
+    if claimed == 1
+      Alerts.connection_unhealthy(reload)
+      Issue.record!(type: :delivery_failure, subject: self,
+                    summary: "#{consecutive_failures} consecutive delivery failures")
+    else
+      Issue.bump!(type: :delivery_failure, subject: self)
+    end
   end
 
   def record_delivery_success
@@ -42,6 +49,7 @@ class Connection < ApplicationRecord
                     .update_all(unhealthy_since: nil, consecutive_failures: 0)
     if recovered == 1
       Alerts.connection_recovered(reload)
+      Issue.auto_resolve!(type: :delivery_failure, subject: self)
     else
       self.class.where(id: id).update_all(consecutive_failures: 0)
     end

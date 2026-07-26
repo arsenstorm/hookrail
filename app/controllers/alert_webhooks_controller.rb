@@ -5,7 +5,7 @@ class AlertWebhooksController < ApplicationController
   end
 
   def update
-    if Current.organization.update(alert_webhook_url: params.require(:organization)[:alert_webhook_url])
+    if Current.organization.update(params.require(:organization).permit(:alert_webhook_url, :slack_webhook_url, :discord_webhook_url))
       redirect_to alert_webhook_path, notice: "Alert webhook saved."
     else
       render :show, status: :unprocessable_entity
@@ -19,7 +19,7 @@ class AlertWebhooksController < ApplicationController
   end
 
   def test
-    if Current.organization.alert_webhook_configured?
+    if Current.organization.alert_webhook_configured? || Current.organization.chat_webhook_configured?
       Alerts.test(Current.organization)
       redirect_to alert_webhook_path, notice: "Test alert sent."
     else

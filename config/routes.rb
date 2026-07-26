@@ -23,6 +23,14 @@ Rails.application.routes.draw do
   # Webhooks rejected by inbound signature verification
   resources :quarantined_webhooks, only: %i[index show], path: "quarantine"
 
+  # Persistent incidents with an ack/resolve lifecycle.
+  resources :issues, only: %i[index show] do
+    member do
+      patch :acknowledge
+      patch :resolve
+    end
+  end
+
   # Route management: sources, destinations, and the connections that wire them.
   resources :sources do
     member { patch :rotate_token }

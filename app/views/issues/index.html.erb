@@ -1,0 +1,67 @@
+<% content_for :title, "Issues" %>
+<div class="w-full max-w-4xl mx-auto py-16">
+  <div class="flex items-center justify-between mb-6">
+    <h1 class="text-2xl font-semibold">Issues</h1>
+    <%= link_to "Dashboard", root_path, class: "text-sm text-gray-500 hover:text-gray-700" %>
+  </div>
+
+  <div class="flex gap-4 mb-4">
+    <%= link_to "Unresolved", issues_path,
+          class: "text-sm #{@status.nil? ? "font-medium text-gray-900" : "text-gray-500 hover:text-gray-700"}" %>
+    <%= link_to "Open", issues_path(status: "open"),
+          class: "text-sm #{@status == "open" ? "font-medium text-gray-900" : "text-gray-500 hover:text-gray-700"}" %>
+    <%= link_to "Acknowledged", issues_path(status: "acknowledged"),
+          class: "text-sm #{@status == "acknowledged" ? "font-medium text-gray-900" : "text-gray-500 hover:text-gray-700"}" %>
+    <%= link_to "Resolved", issues_path(status: "resolved"),
+          class: "text-sm #{@status == "resolved" ? "font-medium text-gray-900" : "text-gray-500 hover:text-gray-700"}" %>
+    <%= link_to "All", issues_path(status: "all"),
+          class: "text-sm #{@status == "all" ? "font-medium text-gray-900" : "text-gray-500 hover:text-gray-700"}" %>
+  </div>
+
+  <% if @issues.empty? %>
+    <p class="text-gray-500">Nothing here. Issues open automatically when deliveries fail, transformations throw, or webhooks are quarantined.</p>
+  <% else %>
+    <table class="w-full text-sm">
+      <thead class="text-left text-gray-500 border-b">
+        <tr>
+          <th class="py-2 font-medium">Last seen</th>
+          <th class="py-2 font-medium">Type</th>
+          <th class="py-2 font-medium">Subject</th>
+          <th class="py-2 font-medium">Count</th>
+          <th class="py-2 font-medium">Status</th>
+          <th class="py-2 font-medium"></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @issues.each do |issue| %>
+          <tr class="border-b hover:bg-gray-50">
+            <td class="py-2">
+              <%= link_to issue.last_seen_at.strftime("%Y-%m-%d %H:%M:%S"),
+                    issue_path(issue), class: "text-blue-600 hover:underline" %>
+            </td>
+            <td class="py-2"><%= issue.issue_type.humanize %></td>
+            <td class="py-2"><%= issue.subject_name %></td>
+            <td class="py-2"><%= issue.count %></td>
+            <td class="py-2 <%= issue.status_open? ? "text-red-700" : (issue.status_acknowledged? ? "text-amber-700" : "text-gray-500") %>">
+              <%= issue.status %>
+            </td>
+            <td class="py-2">
+              <% if can_edit? %>
+                <div class="flex gap-3">
+                  <% if issue.status_open? %>
+                    <%= button_to "Acknowledge", acknowledge_issue_path(issue), method: :patch,
+                          class: "text-sm text-blue-600 hover:underline cursor-pointer" %>
+                  <% end %>
+                  <% unless issue.status_resolved? %>
+                    <%= button_to "Resolve", resolve_issue_path(issue), method: :patch,
+                          class: "text-sm text-blue-600 hover:underline cursor-pointer" %>
+                  <% end %>
+                </div>
+              <% end %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  <% end %>
+</div>

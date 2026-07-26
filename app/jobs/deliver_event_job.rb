@@ -42,6 +42,8 @@ class DeliverEventJob < ApplicationJob
         # feeds the same retry/backoff and health alerting as an HTTP error.
         attempt.update!(status: :failed, error: "TransformationError: #{e.message}")
         connection.record_delivery_failure
+        Issue.record!(type: :transformation_error, subject: connection,
+                      summary: "TransformationError: #{e.message}".truncate(200))
         raise DeliveryError
       end
       # Persisted by the status update below — what the transform produced,

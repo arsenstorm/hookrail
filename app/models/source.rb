@@ -3,6 +3,7 @@ class Source < ApplicationRecord
   has_many :events, dependent: :destroy
   has_many :connections, dependent: :destroy
   has_many :quarantined_webhooks, dependent: :destroy
+  has_many :issues, as: :subject, dependent: :destroy
 
   validates :name, presence: true
 

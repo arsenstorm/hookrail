@@ -27,6 +27,23 @@
             class: "w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-mono" %>
     </div>
 
+    <div class="border-t pt-4">
+      <h2 class="text-sm font-semibold text-gray-700 mb-1">Chat notifications</h2>
+      <p class="text-xs text-gray-500 mb-3">Posted when a new issue opens — delivery failures, transformation errors, quarantined webhooks. Repeats of an open issue don't re-notify.</p>
+      <div class="space-y-4">
+        <div>
+          <%= f.label :slack_webhook_url, "Slack incoming webhook URL", class: "block text-sm font-medium text-gray-700 mb-1" %>
+          <%= f.text_field :slack_webhook_url, placeholder: "https://hooks.slack.com/services/…",
+                class: "w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-mono" %>
+        </div>
+        <div>
+          <%= f.label :discord_webhook_url, "Discord webhook URL", class: "block text-sm font-medium text-gray-700 mb-1" %>
+          <%= f.text_field :discord_webhook_url, placeholder: "https://discord.com/api/webhooks/…",
+                class: "w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-mono" %>
+        </div>
+      </div>
+    </div>
+
     <%= f.submit "Save", class: "rounded-md bg-blue-600 text-white px-3 py-1.5 text-sm hover:bg-blue-700 cursor-pointer" %>
   <% end %>
 
@@ -40,14 +57,18 @@
         Verify <code>X-Hookrail-Signature</code> as the HMAC-SHA256 of <code>"timestamp.body"</code> with this
         secret — the same scheme as event deliveries, see the README.
       </p>
+    </div>
+  <% end %>
 
-      <div class="mt-4 flex items-center gap-4">
-        <%= button_to "Send test alert", test_alert_webhook_path,
-              class: "rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer" %>
+  <% if organization.alert_webhook_configured? || organization.chat_webhook_configured? %>
+    <div class="mt-4 flex items-center gap-4 max-w-lg">
+      <%= button_to "Send test alert", test_alert_webhook_path,
+            class: "rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer" %>
+      <% if organization.alert_webhook_configured? %>
         <%= button_to "Remove", alert_webhook_path, method: :delete,
               class: "text-red-600 hover:underline text-sm cursor-pointer",
               data: { turbo_confirm: "Remove the alert webhook? The signing secret is discarded with it." } %>
-      </div>
+      <% end %>
     </div>
   <% end %>
 

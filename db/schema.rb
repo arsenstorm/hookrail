@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_26_093621) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_26_095424) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -145,6 +145,24 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_26_093621) do
     t.index ["token"], name: "index_invitations_on_token", unique: true
   end
 
+  create_table "issues", force: :cascade do |t|
+    t.integer "count", default: 1, null: false
+    t.datetime "created_at", null: false
+    t.datetime "first_seen_at", null: false
+    t.string "issue_type", null: false
+    t.datetime "last_seen_at", null: false
+    t.bigint "project_id", null: false
+    t.string "status", default: "open", null: false
+    t.bigint "subject_id", null: false
+    t.string "subject_type", null: false
+    t.string "summary"
+    t.datetime "updated_at", null: false
+    t.index ["issue_type", "subject_type", "subject_id"], name: "index_issues_unresolved_uniqueness", unique: true, where: "((status)::text <> 'resolved'::text)"
+    t.index ["project_id", "status", "last_seen_at"], name: "index_issues_on_project_id_and_status_and_last_seen_at"
+    t.index ["project_id"], name: "index_issues_on_project_id"
+    t.index ["subject_type", "subject_id"], name: "index_issues_on_subject"
+  end
+
   create_table "memberships", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.bigint "organization_id", null: false
@@ -175,9 +193,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_26_093621) do
     t.string "alert_webhook_secret"
     t.string "alert_webhook_url"
     t.datetime "created_at", null: false
+    t.string "discord_webhook_url"
     t.string "name", null: false
     t.bigint "owner_id", null: false
     t.integer "retention_days", default: 30, null: false
+    t.string "slack_webhook_url"
     t.datetime "updated_at", null: false
     t.index ["owner_id"], name: "index_organizations_on_owner_id"
   end
@@ -394,6 +414,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_26_093621) do
   add_foreign_key "destinations", "projects"
   add_foreign_key "events", "sources"
   add_foreign_key "invitations", "organizations"
+  add_foreign_key "issues", "projects"
   add_foreign_key "memberships", "organizations"
   add_foreign_key "memberships", "users"
   add_foreign_key "organizations", "users", column: "owner_id"
