@@ -38,7 +38,7 @@ class AlertBannerUiTest < ActionDispatch::IntegrationTest
     assert_response :ok
     assert_match "GH", response.body
     assert_match "API", response.body
-    assert_match "failing for about 2 hours", response.body
+    assert_match "Failing for about 2 hours", response.body
   end
 
   test "connections index shows the banner and the row indicator" do

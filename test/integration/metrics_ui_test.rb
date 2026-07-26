@@ -40,21 +40,13 @@ class MetricsUiTest < ActionDispatch::IntegrationTest
                     status: status, attempted_at: Time.current, duration_ms: duration_ms)
   end
 
-  test "dashboard links to the metrics page" do
-    sign_in!
-
-    get root_path
-    assert_response :ok
-    assert_select "a[href=?]", metrics_path
-  end
-
-  test "metrics page renders totals, charts, and latency with 24h default" do
+  test "the dashboard renders totals, charts, and latency with 24h default" do
     sign_in!
     source, _destination, connection = build_connection!
     attempt!(event!(source), connection, status: "succeeded", duration_ms: 120)
     attempt!(event!(source), connection, status: "dead")
 
-    get metrics_path
+    get root_path
     assert_response :ok
     assert_select "canvas[data-controller=dither-chart]", count: 2
     assert_select "a[aria-current=page]", text: "24h"
@@ -65,7 +57,7 @@ class MetricsUiTest < ActionDispatch::IntegrationTest
   test "window and sort survive switching" do
     sign_in!
 
-    get metrics_path(window: "7d", sort: "events")
+    get root_path(window: "7d", sort: "events")
     assert_response :ok
     assert_select "a[aria-current=page]", text: "7d"
     assert_select "nav a[href*=?]", "sort=events", count: 3
@@ -74,15 +66,16 @@ class MetricsUiTest < ActionDispatch::IntegrationTest
 
   test "the worst connection sorts first by default" do
     sign_in!
-    source_x, dest_x, connection_x = build_connection!
-    source_y, dest_y, connection_y = build_connection!
+    source_x, _dest_x, connection_x = build_connection!
+    source_y, _dest_y, connection_y = build_connection!
     attempt!(event!(source_x), connection_x, status: "dead")
     attempt!(event!(source_y), connection_y, status: "succeeded")
 
-    get metrics_path
+    get root_path
     assert_response :ok
-    x = response.body.index("#{source_x.name} → #{dest_x.name}")
-    y = response.body.index("#{source_y.name} → #{dest_y.name}")
+    cells = css_select("table tbody td:first-child").map(&:text)
+    x = cells.index { |text| text.include?(source_x.name) }
+    y = cells.index { |text| text.include?(source_y.name) }
     assert x, "expected the failing connection in the table"
     assert y, "expected the healthy connection in the table"
     assert x < y, "expected the failing connection to sort first"

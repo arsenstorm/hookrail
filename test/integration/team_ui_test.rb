@@ -107,11 +107,11 @@ class TeamUiTest < ActionDispatch::IntegrationTest
     sign_in_as!(user)
     get root_path
     assert_response :ok
-    assert_match "org #{user.organization.name}", response.body
+    assert_select "aside details summary", text: /#{Regexp.escape(user.organization.name)}/
 
     post switch_org_path(other.organization.id)
     follow_redirect!
     assert_response :ok
-    assert_match "org #{other.organization.name}", response.body
+    assert_select "aside details summary", text: /#{Regexp.escape(other.organization.name)}/
   end
 end

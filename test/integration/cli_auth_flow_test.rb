@@ -189,13 +189,20 @@ class CliAuthFlowTest < ActionDispatch::IntegrationTest
     get "/api/v1/cli/whoami", headers: auth(raw)
     assert_response :unauthorized
 
-    other_token, other_raw = CliToken.issue!(user: member, organization: org, name: "member's other box")
+    # A member can revoke their own token, but not somebody else's.
+    own_token, own_raw = CliToken.issue!(user: member, organization: org, name: "member's other box")
+    owners_token, owners_raw = CliToken.issue!(user: owner, organization: org, name: "owner's box")
     reset!
     sign_in_as!(member)
-    delete "/cli_tokens/#{other_token.id}"
-    assert_redirected_to root_path
 
-    get "/api/v1/cli/whoami", headers: auth(other_raw)
+    delete "/cli_tokens/#{own_token.id}"
+    assert_redirected_to security_account_path
+    get "/api/v1/cli/whoami", headers: auth(own_raw)
+    assert_response :unauthorized
+
+    delete "/cli_tokens/#{owners_token.id}"
+    assert_redirected_to root_path
+    get "/api/v1/cli/whoami", headers: auth(owners_raw)
     assert_response :ok
   end
 

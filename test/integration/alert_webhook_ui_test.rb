@@ -97,6 +97,6 @@ class AlertWebhookUiTest < ActionDispatch::IntegrationTest
 
     get root_path
     assert_response :ok
-    assert_match "Alert webhook →", response.body
+    assert_select "a[href=?]", alert_webhook_path
   end
 end

@@ -70,8 +70,10 @@ Rails.application.routes.draw do
   get "invites/:token", to: "invites#show", as: :invite
   post "switch_org/:id", to: "org_switches#create", as: :switch_org
 
-  # Aggregate delivery health over a selectable window.
-  get "metrics", to: "metrics#show", as: :metrics
+  # The signed-in user's own profile and credentials.
+  resource :account, only: :show do
+    get :security
+  end
 
   namespace :api do
     namespace :v1 do

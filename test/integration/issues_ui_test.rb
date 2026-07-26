@@ -161,6 +161,6 @@ class IssuesUiTest < ActionDispatch::IntegrationTest
 
     get root_path
     assert_response :ok
-    assert_match "Issues →", response.body
+    assert_select "a[href=?]", issues_path, text: "Issues"
   end
 end

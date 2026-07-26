@@ -23,12 +23,18 @@ export default class extends Controller {
 
   connect() {
     this.draw()
-    this.resize = () => this.draw()
+    // One redraw per frame: a resize drag fires far faster than we can redraw
+    // two dithered canvases.
+    this.resize = () => {
+      if (this.frame) return
+      this.frame = requestAnimationFrame(() => { this.frame = null; this.draw() })
+    }
     addEventListener("resize", this.resize)
   }
 
   disconnect() {
     removeEventListener("resize", this.resize)
+    if (this.frame) cancelAnimationFrame(this.frame)
   }
 
   draw() {
@@ -42,6 +48,8 @@ export default class extends Controller {
     const ctx = canvas.getContext("2d")
     ctx.scale(dpr, dpr)
     ctx.clearRect(0, 0, w, h)
+    // The canvas element's own text color carries the theme-aware axis color.
+    this.axisColor = getComputedStyle(canvas).color
     if (this.typeValue === "bars") this.drawBars(ctx, w, h)
     else this.drawArea(ctx, w, h)
   }
@@ -90,9 +98,17 @@ export default class extends Controller {
     ctx.stroke()
   }
 
+  // Baseline the bars sit on — the area chart gets one for free from its own
+  // fill, bars would otherwise float with no x axis.
+  axis(ctx, w, h) {
+    ctx.fillStyle = this.axisColor
+    ctx.fillRect(0, h - 1, w, 1)
+  }
+
   drawBars(ctx, w, h) {
     const n = this.labelsValue.length
     if (n === 0) return
+    this.axis(ctx, w, h)
     const max = this.max()
     const pad = 4 // tunable
     const gap = 2 // tunable

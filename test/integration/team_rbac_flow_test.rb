@@ -79,7 +79,7 @@ class TeamRbacFlowTest < ActionDispatch::IntegrationTest
     assert_response :ok
     assert_match source.name, response.body
 
-    get metrics_path
+    get root_path
     assert_response :ok
 
     post event_retries_path(event), params: { connection_id: connection.id }
