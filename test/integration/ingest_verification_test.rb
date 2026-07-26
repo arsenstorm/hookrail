@@ -133,7 +133,70 @@ class IngestVerificationTest < ActionDispatch::IntegrationTest
     assert_response :ok
   end
 
+  test "stripe preset valid signature is accepted" do
+    source = stripe_preset_source
+    body = '{"hello":"world"}'
+    ts = Time.current.to_i
+    sig = OpenSSL::HMAC.hexdigest("SHA256", "whsec_preset", "#{ts}.#{body}")
+
+    assert_difference -> { source.events.count }, 1 do
+      post "/ingest/#{source.token}", params: body, headers: {
+        "Content-Type" => "application/json",
+        "Stripe-Signature" => "t=#{ts},v1=#{sig}"
+      }
+    end
+
+    assert_response :ok
+    assert_equal 0, source.quarantined_webhooks.count
+  end
+
+  test "stripe preset tampered body is quarantined with signature mismatch" do
+    source = stripe_preset_source
+    body = '{"hello":"world"}'
+    ts = Time.current.to_i
+    sig = OpenSSL::HMAC.hexdigest("SHA256", "whsec_preset", "#{ts}.#{body}")
+
+    assert_no_difference -> { source.events.count } do
+      assert_difference -> { source.quarantined_webhooks.count }, 1 do
+        post "/ingest/#{source.token}", params: '{"hello":"tampered"}', headers: {
+          "Content-Type" => "application/json",
+          "Stripe-Signature" => "t=#{ts},v1=#{sig}"
+        }
+      end
+    end
+
+    assert_response :unauthorized
+    assert_equal "signature mismatch", source.quarantined_webhooks.last.reason
+  end
+
+  test "stripe preset stale timestamp is quarantined with timestamp outside tolerance" do
+    source = stripe_preset_source
+    body = '{"hello":"world"}'
+    ts = Time.current.to_i - 400
+    sig = OpenSSL::HMAC.hexdigest("SHA256", "whsec_preset", "#{ts}.#{body}")
+
+    assert_no_difference -> { source.events.count } do
+      assert_difference -> { source.quarantined_webhooks.count }, 1 do
+        post "/ingest/#{source.token}", params: body, headers: {
+          "Content-Type" => "application/json",
+          "Stripe-Signature" => "t=#{ts},v1=#{sig}"
+        }
+      end
+    end
+
+    assert_response :unauthorized
+    assert_equal "timestamp outside tolerance", source.quarantined_webhooks.last.reason
+  end
+
   private
+
+  def stripe_preset_source
+    Source.create!(
+      name: "Stripe Preset Source",
+      project: create_test_project!,
+      verification: { provider: "stripe", secret: "whsec_preset" }
+    )
+  end
 
   def github_source
     Source.create!(

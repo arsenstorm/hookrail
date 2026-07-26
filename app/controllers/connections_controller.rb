@@ -134,8 +134,19 @@ class ConnectionsController < ApplicationController
       next if sep.empty?
 
       key = key.strip
-      acc[key] = value.strip unless key.empty?
+      value = value.strip
+      next if key.empty?
+
+      # Values starting with "{" are parsed as operator-expression JSON, falling back to the literal string.
+      acc[key] = value.start_with?("{") ? parse_operator_json(value) : value
     end
+  end
+
+  def parse_operator_json(value)
+    parsed = JSON.parse(value)
+    parsed.is_a?(Hash) ? parsed : value
+  rescue JSON::ParserError
+    value
   end
 
   def load_options

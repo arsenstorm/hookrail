@@ -1,3 +1,5 @@
+require "base64"
+
 class Destination < ApplicationRecord
   belongs_to :project
   has_many :connections, dependent: :destroy
@@ -7,6 +9,21 @@ class Destination < ApplicationRecord
 
   # Secret used to HMAC-sign forwarded payloads; auto-generated, DB unique index enforces integrity.
   has_secure_token :signing_secret
+
+  # Optional auth for the destination endpoint: "bearer" sends
+  # `Authorization: Bearer <token>`, "basic" sends HTTP basic. Credentials live
+  # only in this store — never in attempt records, logs, or API responses.
+  store_accessor :auth, :type, :token, :username, :password, prefix: true
+
+  # Drop blank inputs; "none"/blank type clears the whole config.
+  before_validation do
+    self.auth = auth.to_h.compact_blank
+    self.auth = {} if auth_type.blank? || auth_type == "none"
+  end
+
+  validates :auth_type, inclusion: { in: %w[bearer basic] }, if: -> { auth_type.present? }
+  validates :auth_token, presence: true, if: -> { auth_type == "bearer" }
+  validates :auth_username, presence: true, if: -> { auth_type == "basic" }
 
   # "http" destinations POST to a URL; "cli" destinations stream to a live
   # `hookrail listen` session and are created by the CLI, not the form.
@@ -39,6 +56,15 @@ class Destination < ApplicationRecord
     return 0 if claimed == 1
 
     [ window_start + period - Time.current.to_f, 0.1 ].max
+  end
+
+  # The Authorization header value for this destination, or nil when no auth is
+  # configured. Basic auth with a blank password encodes "user:".
+  def authorization_header
+    case auth_type
+    when "bearer" then "Bearer #{auth_token}"
+    when "basic" then "Basic #{Base64.strict_encode64("#{auth_username}:#{auth_password}")}"
+    end
   end
 
   private

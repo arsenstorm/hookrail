@@ -6,6 +6,8 @@ class Connection < ApplicationRecord
 
   UNHEALTHY_THRESHOLD = 5
   RULE_KEYS = %w[path http_method headers body].freeze
+  RULE_OPERATORS = %w[gt gte lt lte neq contains in exists].freeze
+  NUMERIC_OPERATORS = { "gt" => :>, "gte" => :>=, "lt" => :<, "lte" => :<= }.freeze
   RETRY_POLICY_KEYS = %w[strategy interval max_attempts].freeze
   RETRY_MAX_ATTEMPTS = 50
   RETRY_MAX_SPAN = 7.days
@@ -66,7 +68,9 @@ class Connection < ApplicationRecord
   validate :retry_policy_shape
 
   # Blank rule -> routes everything (pre-rule behavior). Criteria AND together.
-  # Values compare as strings so form input matches JSON numbers and booleans.
+  # Scalar values compare as strings so form input matches JSON numbers and
+  # booleans; an object value is an operator expression (gt/gte/lt/lte/neq/
+  # contains/in/exists) whose operators AND together.
   def routes?(event)
     rule = routing_rule.to_h
     return true if rule.blank?
@@ -117,6 +121,21 @@ class Connection < ApplicationRecord
     %w[headers body].each do |key|
       errors.add(:routing_rule, "#{key} must be an object") if rule[key].present? && !rule[key].is_a?(Hash)
     end
+
+    %w[headers body].each do |key|
+      next unless rule[key].is_a?(Hash)
+
+      rule[key].each do |name, value|
+        next unless value.is_a?(Hash)
+
+        errors.add(:routing_rule, "#{key}.#{name}: operator object must not be empty") if value.empty?
+        value.each do |op, arg|
+          errors.add(:routing_rule, "#{key}.#{name} has unknown operator: #{op}") unless RULE_OPERATORS.include?(op.to_s)
+          errors.add(:routing_rule, "#{key}.#{name}: in must be an array") if op.to_s == "in" && !arg.is_a?(Array)
+          errors.add(:routing_rule, "#{key}.#{name}: exists must be true or false") if op.to_s == "exists" && ![ true, false ].include?(arg)
+        end
+      end
+    end
   end
 
   # Reject code that can't run before it ever gates a delivery; unchanged
@@ -165,7 +184,7 @@ class Connection < ApplicationRecord
     return true if criteria.blank?
 
     downcased = headers.to_h.transform_keys(&:downcase)
-    criteria.all? { |name, value| downcased[name.downcase].to_s == value.to_s }
+    criteria.all? { |name, expected| criterion_match?(downcased[name.downcase], expected) }
   end
 
   # Dot paths address nested JSON objects ("data.object.status"). A body that
@@ -176,9 +195,31 @@ class Connection < ApplicationRecord
     json = JSON.parse(body.to_s)
     return false unless json.is_a?(Hash)
 
-    criteria.all? { |dot_path, expected| dig_dot_path(json, dot_path).to_s == expected.to_s }
+    criteria.all? { |dot_path, expected| criterion_match?(dig_dot_path(json, dot_path), expected) }
   rescue JSON::ParserError
     false
+  end
+
+  # Scalar expected -> exact string compare (pre-operator behavior). A Hash is
+  # an operator expression; every operator in it must match (AND).
+  def criterion_match?(actual, expected)
+    return actual.to_s == expected.to_s unless expected.is_a?(Hash)
+
+    expected.all? { |op, arg| operator_match?(op, actual, arg) }
+  end
+
+  def operator_match?(op, actual, arg)
+    case op
+    when "gt", "gte", "lt", "lte"
+      a = Float(actual.to_s, exception: false)
+      b = Float(arg.to_s, exception: false)
+      a && b ? a.public_send(NUMERIC_OPERATORS.fetch(op), b) : false
+    when "neq" then actual.to_s != arg.to_s
+    when "contains" then actual.to_s.include?(arg.to_s)
+    when "in" then Array(arg).any? { |candidate| actual.to_s == candidate.to_s }
+    when "exists" then arg == !actual.nil?
+    else false
+    end
   end
 
   def dig_dot_path(json, dot_path)

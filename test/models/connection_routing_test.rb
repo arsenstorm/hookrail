@@ -107,4 +107,117 @@ class ConnectionRoutingTest < ActiveSupport::TestCase
     assert_equal({}, @connection.reload.routing_rule)
     assert @connection.routes?(event_for)
   end
+
+  test "operator gt matches and fails" do
+    rule!("body" => { "amount" => { "gt" => 10 } })
+    assert @connection.routes?(event_for(body: '{"amount":15}'))
+    refute @connection.routes?(event_for(body: '{"amount":10}'))
+  end
+
+  test "operator gte matches and fails" do
+    rule!("body" => { "amount" => { "gte" => 10 } })
+    assert @connection.routes?(event_for(body: '{"amount":10}'))
+    refute @connection.routes?(event_for(body: '{"amount":9}'))
+  end
+
+  test "operator lt matches and fails" do
+    rule!("body" => { "amount" => { "lt" => 10 } })
+    assert @connection.routes?(event_for(body: '{"amount":9}'))
+    refute @connection.routes?(event_for(body: '{"amount":10}'))
+  end
+
+  test "operator lte matches and fails" do
+    rule!("body" => { "amount" => { "lte" => 10 } })
+    assert @connection.routes?(event_for(body: '{"amount":10}'))
+    refute @connection.routes?(event_for(body: '{"amount":11}'))
+  end
+
+  test "operator neq matches and fails" do
+    rule!("body" => { "status" => { "neq" => "failed" } })
+    assert @connection.routes?(event_for(body: '{"status":"succeeded"}'))
+    refute @connection.routes?(event_for(body: '{"status":"failed"}'))
+  end
+
+  test "operator contains matches and fails" do
+    rule!("body" => { "message" => { "contains" => "error" } })
+    assert @connection.routes?(event_for(body: '{"message":"an error occurred"}'))
+    refute @connection.routes?(event_for(body: '{"message":"all good"}'))
+  end
+
+  test "operator in matches and fails" do
+    rule!("body" => { "type" => { "in" => %w[a b] } })
+    assert @connection.routes?(event_for(body: '{"type":"a"}'))
+    refute @connection.routes?(event_for(body: '{"type":"c"}'))
+  end
+
+  test "operator exists true matches and fails" do
+    rule!("body" => { "field" => { "exists" => true } })
+    assert @connection.routes?(event_for(body: '{"field":"x"}'))
+    refute @connection.routes?(event_for(body: "{}"))
+  end
+
+  test "operator exists false matches and fails" do
+    rule!("body" => { "field" => { "exists" => false } })
+    assert @connection.routes?(event_for(body: "{}"))
+    refute @connection.routes?(event_for(body: '{"field":"x"}'))
+  end
+
+  test "numeric operator does not route when actual value doesn't coerce to a number" do
+    rule!("body" => { "amount" => { "gt" => 100 } })
+    refute @connection.routes?(event_for(body: '{"amount":"abc"}'))
+  end
+
+  test "numeric operator does not route when the path is missing" do
+    rule!("body" => { "amount" => { "gt" => 100 } })
+    refute @connection.routes?(event_for(body: "{}"))
+  end
+
+  test "multiple operators in one object AND together" do
+    rule!("body" => { "amount" => { "gt" => 10, "lt" => 20 } })
+    assert @connection.routes?(event_for(body: '{"amount":15}'))
+    refute @connection.routes?(event_for(body: '{"amount":25}'))
+  end
+
+  test "operator expression on a header criterion, case-insensitive header name" do
+    rule!("headers" => { "X-Count" => { "gte" => 2 } })
+    assert @connection.routes?(event_for(headers: { "x-count" => "5" }))
+    refute @connection.routes?(event_for(headers: { "x-count" => "1" }))
+  end
+
+  test "scalar criteria remain exact-match after adding operators" do
+    rule!("body" => { "count" => "100" }, "headers" => { "X-Github-Event" => "push" })
+    assert @connection.routes?(event_for(body: '{"count":100}', headers: { "X-Github-Event" => "push" }))
+    refute @connection.routes?(event_for(body: '{"count":100}', headers: { "X-Github-Event" => "pull_request" }))
+  end
+
+  test "validation: unknown operator rejected" do
+    @connection.routing_rule = { "body" => { "amount" => { "between" => [ 1, 2 ] } } }
+    refute @connection.valid?
+    assert_includes @connection.errors[:routing_rule].join, "unknown operator: between"
+  end
+
+  test "validation: in operator must be an array" do
+    @connection.routing_rule = { "body" => { "amount" => { "in" => "5" } } }
+    refute @connection.valid?
+    assert_includes @connection.errors[:routing_rule].join, "in must be an array"
+  end
+
+  test "validation: exists operator must be true or false" do
+    @connection.routing_rule = { "body" => { "amount" => { "exists" => "yes" } } }
+    refute @connection.valid?
+    assert_includes @connection.errors[:routing_rule].join, "exists must be true or false"
+  end
+
+  test "validation: empty operator object rejected" do
+    @connection.routing_rule = { "body" => { "amount" => {} } }
+    refute @connection.valid?
+    assert_includes @connection.errors[:routing_rule].join, "operator object must not be empty"
+  end
+
+  # Documented behavior: a missing body path stringifies to "" which != "failed",
+  # so neq matches even though the field is absent.
+  test "neq against a missing body path matches" do
+    rule!("body" => { "status" => { "neq" => "failed" } })
+    assert @connection.routes?(event_for(body: "{}"))
+  end
 end

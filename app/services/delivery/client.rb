@@ -61,7 +61,8 @@ module Delivery
     # Everything the wire needs, before transport: forwarded headers minus the
     # skip lists, destination overrides, signing, and the (possibly
     # transformed) body. Shared by the HTTP client and the CLI tunnel
-    # broadcast so both sign and filter identically.
+    # broadcast so both sign and filter identically. Configured destination
+    # auth overrides any manually set Authorization header.
     def payload
       body = @transformed ? @transformed[:body] : @event.body.to_s
       headers = {}
@@ -69,6 +70,9 @@ module Delivery
         headers[name] = value.to_s if forwardable?(name)
       end
       @destination.headers.each { |name, value| headers[name] = value.to_s }
+      if (authorization = @destination.authorization_header)
+        headers["Authorization"] = authorization
+      end
       timestamp = Time.current.to_i.to_s
       headers["X-Hookrail-Timestamp"] = timestamp
       headers["X-Hookrail-Signature"] = "sha256=#{signature(body, timestamp)}"

@@ -20,6 +20,13 @@
     </div>
 
     <div>
+      <%= f.label :verification_provider, "Provider", class: "block text-sm font-medium text-gray-700 mb-1" %>
+      <%= f.select :verification_provider, [ [ "Generic (configure below)", "" ], [ "Stripe", "stripe" ] ], {},
+            class: "w-full rounded-md border border-gray-300 px-3 py-2 text-sm" %>
+      <p class="text-xs text-gray-500 mt-1">A provider preset needs only the signing secret — every field below is filled in automatically and kept in sync. Switching back to generic keeps the values for editing.</p>
+    </div>
+
+    <div>
       <%= f.label :verification_secret, "Signing secret", class: "block text-sm font-medium text-gray-700 mb-1" %>
       <%= f.text_field :verification_secret, class: "w-full rounded-md border border-gray-300 px-3 py-2 text-sm" %>
     </div>

@@ -9,13 +9,30 @@ class Source < ApplicationRecord
   # Generates a unique 24-char token in before_create; DB unique index enforces integrity.
   has_secure_token :token
 
-  store_accessor :verification, :secret, :header, :algorithm, :encoding,
+  store_accessor :verification, :provider, :secret, :header, :algorithm, :encoding,
                  :header_format, :signature_prefix, :signature_key,
                  :timestamp_key, :timestamp_header, :payload_template,
                  :tolerance_seconds, prefix: true
 
+  # Provider presets are a thin layer over the generic verifier: picking one
+  # writes these generic fields, and the verifier runs the exact same code path
+  # as a hand-configured source.
+  VERIFICATION_PRESETS = {
+    "stripe" => {
+      "header" => "Stripe-Signature",
+      "header_format" => "kv",
+      "signature_key" => "v1",
+      "timestamp_key" => "t",
+      "payload_template" => "{timestamp}.{body}",
+      "algorithm" => "sha256",
+      "encoding" => "hex",
+      "tolerance_seconds" => 300
+    }.freeze
+  }.freeze
+
   # Drop blank form inputs so presence of `secret` alone means "enabled".
   before_validation { self.verification = verification.to_h.compact_blank }
+  before_validation :apply_verification_preset
 
   with_options if: -> { verification_secret.present? } do
     validates :verification_header, presence: true
@@ -24,6 +41,8 @@ class Source < ApplicationRecord
     validates :verification_header_format, inclusion: { in: %w[value kv] }, allow_blank: true
     validates :verification_tolerance_seconds, numericality: { only_integer: true, greater_than: 0 }, allow_blank: true
   end
+
+  validates :verification_provider, inclusion: { in: VERIFICATION_PRESETS.keys }, allow_blank: true
 
   def verification_enabled?
     verification_secret.present?
@@ -52,6 +71,14 @@ class Source < ApplicationRecord
   end
 
   private
+
+  # The preset overwrites its fields on every save so a hand-edited value can't
+  # silently drift from the selected provider; clearing the provider leaves the
+  # written fields as an editable generic config.
+  def apply_verification_preset
+    preset = VERIFICATION_PRESETS[verification_provider]
+    self.verification = verification.to_h.merge(preset) if preset
+  end
 
   # Normalizes Parameters / symbol keys; {} clears (dedupe off). An enabled
   # config without a window gets the 60-second default.

@@ -33,7 +33,8 @@ module Api
       def scope = Current.project.destinations
 
       def destination_params
-        params.require(:destination).permit(:name, :url, :rate_limit, :rate_limit_period, headers: {})
+        params.require(:destination).permit(:name, :url, :rate_limit, :rate_limit_period,
+          :auth_type, :auth_token, :auth_username, :auth_password, headers: {})
       end
 
       def destination_json(destination)

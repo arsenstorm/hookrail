@@ -51,7 +51,8 @@ class DestinationsController < ApplicationController
   private
 
   def destination_params
-    permitted = params.require(:destination).permit(:name, :url, :rate_limit, :rate_limit_period)
+    permitted = params.require(:destination).permit(:name, :url, :rate_limit, :rate_limit_period,
+      :auth_type, :auth_token, :auth_username, :auth_password)
     permitted.merge(headers: parse_headers(params.dig(:destination, :headers_text)))
   end
 

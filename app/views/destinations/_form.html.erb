@@ -21,6 +21,23 @@
           class: "w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-mono" %>
   </div>
   <div>
+    <%= f.label :auth_type, "Authentication", class: "block text-sm font-medium text-gray-700 mb-1" %>
+    <p class="text-xs text-gray-500 mb-1">Sets the <code>Authorization</code> header on every forwarded request, overriding any manual header above.</p>
+    <%= f.select :auth_type, [ [ "None", "none" ], [ "Bearer token", "bearer" ], [ "Basic auth", "basic" ] ],
+          { selected: @destination.auth_type || "none" },
+          class: "w-full rounded-md border border-gray-300 px-3 py-2 text-sm" %>
+    <div class="mt-2 space-y-2">
+      <%= f.text_field :auth_token, placeholder: "Bearer token",
+            class: "w-full rounded-md border border-gray-300 px-3 py-2 text-sm" %>
+      <div class="flex gap-2">
+        <%= f.text_field :auth_username, placeholder: "Username (basic auth)",
+              class: "w-full rounded-md border border-gray-300 px-3 py-2 text-sm" %>
+        <%= f.text_field :auth_password, placeholder: "Password (basic auth)",
+              class: "w-full rounded-md border border-gray-300 px-3 py-2 text-sm" %>
+      </div>
+    </div>
+  </div>
+  <div>
     <%= f.label :rate_limit, "Rate limit", class: "block text-sm font-medium text-gray-700 mb-1" %>
     <p class="text-xs text-gray-500 mb-1">Caps how fast deliveries go out to this destination. Anything over the
       limit queues and is sent as slots free up — nothing is dropped. Leave blank for unlimited.</p>
