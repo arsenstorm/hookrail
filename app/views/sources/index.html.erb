@@ -1,46 +1,54 @@
 <% content_for :title, "Sources" %>
-<div class="w-full max-w-4xl mx-auto py-16">
-  <div class="flex items-center justify-between mb-6">
-    <h1 class="text-2xl font-semibold">Sources</h1>
+<% delete_confirm = "Delete this source? This also deletes all its events and delivery attempts." %>
+<div>
+  <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
+    <h1 class="<%= ui(:heading) %>">Sources</h1>
     <div class="flex items-center gap-4">
       <% if can_edit? %>
-        <%= link_to "New source", new_source_path, class: "text-blue-600 hover:underline" %>
+        <%= link_to "New source", new_source_path, class: ui(:button_primary) %>
       <% end %>
-      <%= link_to "Dashboard", root_path, class: "text-sm text-gray-500 hover:text-gray-700" %>
     </div>
   </div>
 
-  <% if @sources.empty? %>
-    <p class="text-gray-500">No sources yet.</p>
-  <% else %>
-    <table class="w-full text-sm">
-      <thead class="text-left text-gray-500 border-b">
-        <tr>
-          <th class="py-2 font-medium">Name</th>
-          <th class="py-2 font-medium">Ingest URL</th>
-          <th class="py-2 font-medium">Created</th>
-          <th class="py-2 font-medium"></th>
-        </tr>
-      </thead>
-      <tbody>
-        <% @sources.each do |source| %>
-          <tr class="border-b hover:bg-gray-50">
-            <td class="py-2">
-              <%= link_to source.name, source_path(source), class: "text-blue-600 hover:underline" %>
-            </td>
-            <td class="py-2">
-              <span class="text-xs text-gray-500"><%= ingest_url(token: source.token) %></span>
-            </td>
-            <td class="py-2"><%= source.created_at.strftime("%Y-%m-%d %H:%M") %></td>
-            <td class="py-2">
-              <% if can_edit? %>
-                <%= link_to "Edit", edit_source_path(source), class: "text-blue-600 hover:underline" %>
-                <%= button_to "Delete", source_path(source), method: :delete, class: "text-red-600 hover:underline text-sm", form: { class: "inline" }, data: { turbo_confirm: "Delete this source? This also deletes all its events and delivery attempts." } %>
-              <% end %>
-            </td>
+  <div class="<%= ui(:scroller) %>">
+    <div class="<%= ui(:scroller_inner) %>">
+      <table class="w-full text-sm">
+        <thead class="<%= ui(:table_head) %>">
+          <tr>
+            <th class="<%= ui(:th) %> w-full pr-6">Name</th>
+            <th class="<%= ui(:th) %> w-px pr-6">Ingest URL</th>
+            <th class="<%= ui(:th) %> w-px pr-6">Created</th>
+            <th class="<%= ui(:th) %> w-px text-right"><span class="sr-only">Actions</span></th>
           </tr>
-        <% end %>
-      </tbody>
-    </table>
-  <% end %>
+        </thead>
+        <tbody class="<%= ui(:table_body) %>">
+          <% if @sources.empty? %>
+            <%= render "shared/empty_row", colspan: 4, title: "No sources yet",
+                  body: "A source gives you an ingest URL that accepts webhooks from a provider.",
+                  cta_label: "New source", cta_path: new_source_path %>
+          <% else %>
+            <% @sources.each do |source| %>
+              <tr>
+                <td class="<%= ui(:td) %> w-full pr-6">
+                  <%= link_to source.name, source_path(source), class: "font-medium hover:text-oxblood-700 dark:hover:text-oxblood-300" %>
+                </td>
+                <td class="<%= ui(:td_muted) %> w-px max-w-xs pr-6">
+                  <%= render "ingest_url", source: source %>
+                </td>
+                <td class="<%= ui(:td_muted) %> w-px pr-6"><%= timestamp_tag(source.created_at) %></td>
+                <td class="<%= ui(:td) %> w-px text-right">
+                  <% if can_edit? %>
+                    <div class="flex items-center justify-end gap-3">
+                      <%= link_to "Edit", edit_source_path(source), class: ui(:link) %>
+                      <%= button_to "Delete", source_path(source), method: :delete, class: ui(:danger_link), form: { class: "inline" }, data: { turbo_confirm: delete_confirm } %>
+                    </div>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
 </div>

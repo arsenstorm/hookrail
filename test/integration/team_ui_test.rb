@@ -45,7 +45,17 @@ class TeamUiTest < ActionDispatch::IntegrationTest
     reset!
     sign_in_as!(member)
     get members_path
-    assert_redirected_to root_path
+    assert_redirected_to dashboard_path
+  end
+
+  test "the invite form sits behind a dialog trigger" do
+    owner = make_owner!("downer")
+    sign_in_as!(owner)
+
+    get members_path
+    assert_response :ok
+    assert_select "button[data-action=?]", "dialog#open", text: "Invite someone"
+    assert_select "dialog form[action=?]", invitations_path
   end
 
   test "inviting shows a copyable link and revoking removes it" do
@@ -91,11 +101,32 @@ class TeamUiTest < ActionDispatch::IntegrationTest
 
     sign_in_as!(membership.user)
     post transfer_ownership_member_path(membership)
-    assert_redirected_to root_path
+    assert_redirected_to dashboard_path
 
     assert_equal "admin", membership.reload.role
     assert_equal "owner", owner.organization.memberships.find_by(user: owner).role
     assert_equal owner.id, owner.organization.reload.owner_id
+  end
+
+  test "org pages swap the app sidebar for the settings sidebar" do
+    user = make_owner!("sidebars")
+
+    sign_in_as!(user)
+    get members_path
+    assert_response :ok
+    assert_select "aside a[href=?]", dashboard_path, text: /Dashboard/
+    # The Monitor group rides along on /org; the settings-only pages don't.
+    assert_select "aside a[href=?]", events_path
+    assert_select "aside a[href=?]", api_keys_path
+    assert_select "aside a[href=?]", new_organization_path, text: /New organization/
+
+    get dashboard_path
+    assert_response :ok
+    assert_select "aside a[href=?]", events_path
+    assert_select "aside a[href=?]", api_keys_path, count: 0
+    # Org settings is a pinned nav item now, not a switcher-menu row.
+    assert_select "aside a[href=?]", members_path, text: /Organization settings/
+    assert_select "aside [role=menu] a[href=?]", members_path, count: 0
   end
 
   test "the org switcher switches org" do
@@ -105,13 +136,13 @@ class TeamUiTest < ActionDispatch::IntegrationTest
     ProjectGrant.create!(membership: membership, project: other.organization.projects.first, level: "viewer")
 
     sign_in_as!(user)
-    get root_path
+    get dashboard_path
     assert_response :ok
-    assert_match "org #{user.organization.name}", response.body
+    assert_select "aside [role=menu] p", text: user.organization.name
 
     post switch_org_path(other.organization.id)
     follow_redirect!
     assert_response :ok
-    assert_match "org #{other.organization.name}", response.body
+    assert_select "aside [role=menu] p", text: other.organization.name
   end
 end

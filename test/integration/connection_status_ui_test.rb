@@ -97,7 +97,7 @@ class ConnectionStatusUiTest < ActionDispatch::IntegrationTest
 
     post bulk_replay_events_path(connection_id: connection.id)
     follow_redirect!
-    assert_match "resume it before replaying", response.body
+    assert_match "Resume it before replaying", response.body
   end
 
   test "manual retry against a paused connection is refused with an alert" do

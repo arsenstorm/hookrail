@@ -1,10 +1,9 @@
 <% content_for :title, "Edit destination" %>
-<div class="w-full max-w-4xl mx-auto py-16">
-  <div class="flex items-center justify-between mb-6">
-    <h1 class="text-2xl font-semibold">Edit destination</h1>
-    <%= link_to "Dashboard", root_path, class: "text-sm text-gray-500 hover:text-gray-700" %>
+<div>
+  <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
+    <h1 class="<%= ui(:heading) %>">Edit destination</h1>
   </div>
 
   <%= render "form", submit_label: "Save changes" %>
-  <%= link_to "← Destinations", destinations_path, class: "text-sm text-gray-500 hover:text-gray-700 mt-4 inline-block" %>
+  <%= link_to "← Destinations", destinations_path, class: "#{ui(:muted_link)} mt-4 inline-block" %>
 </div>

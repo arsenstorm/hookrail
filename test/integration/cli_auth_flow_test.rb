@@ -54,7 +54,7 @@ class CliAuthFlowTest < ActionDispatch::IntegrationTest
 
     sloppy_code = body["user_code"].downcase.delete("-")
     post "/cli/authorize", params: { code: sloppy_code, decision: "approve" }
-    assert_redirected_to root_path
+    assert_redirected_to dashboard_path
 
     poll_token(device_code)
     assert_response :ok
@@ -80,7 +80,7 @@ class CliAuthFlowTest < ActionDispatch::IntegrationTest
     sign_in_as!(owner)
 
     post "/cli/authorize", params: { code: body["user_code"], decision: "deny" }
-    assert_redirected_to root_path
+    assert_redirected_to dashboard_path
 
     poll_token(body["device_code"])
     assert_response :gone
@@ -106,7 +106,7 @@ class CliAuthFlowTest < ActionDispatch::IntegrationTest
   test "unauthenticated browser POST to /cli/authorize redirects to login" do
     body = start_device_flow!
     post "/cli/authorize", params: { code: body["user_code"], decision: "approve" }
-    assert_redirected_to login_path
+    assert_redirected_to sign_in_path
   end
 
   test "a viewer's CLI token can read but not write, an editor's token can write" do
@@ -183,19 +183,26 @@ class CliAuthFlowTest < ActionDispatch::IntegrationTest
     token, raw = CliToken.issue!(user: member, organization: org, name: "member's box")
 
     sign_in_as!(owner)
-    delete "/cli_tokens/#{token.id}"
+    delete cli_token_path(token)
     assert_redirected_to api_keys_path
 
     get "/api/v1/cli/whoami", headers: auth(raw)
     assert_response :unauthorized
 
-    other_token, other_raw = CliToken.issue!(user: member, organization: org, name: "member's other box")
+    # A member can revoke their own token, but not somebody else's.
+    own_token, own_raw = CliToken.issue!(user: member, organization: org, name: "member's other box")
+    owners_token, owners_raw = CliToken.issue!(user: owner, organization: org, name: "owner's box")
     reset!
     sign_in_as!(member)
-    delete "/cli_tokens/#{other_token.id}"
-    assert_redirected_to root_path
 
-    get "/api/v1/cli/whoami", headers: auth(other_raw)
+    delete cli_token_path(own_token)
+    assert_redirected_to security_account_path
+    get "/api/v1/cli/whoami", headers: auth(own_raw)
+    assert_response :unauthorized
+
+    delete cli_token_path(owners_token)
+    assert_redirected_to dashboard_path
+    get "/api/v1/cli/whoami", headers: auth(owners_raw)
     assert_response :ok
   end
 

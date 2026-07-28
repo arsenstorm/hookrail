@@ -1,1 +1,104 @@
 @import "tailwindcss";
+
+/* Dark mode keys off a class on <html>, not the media query: the pre-paint
+   script in the layout head resolves the stored preference (or "system") to
+   that class, so the toggle and the OS setting go through one path. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Reserve the scrollbar track always, so short and tall pages centre on the
+   same axis instead of shifting sideways when the scrollbar appears. */
+html {
+  scrollbar-gutter: stable;
+}
+
+@theme {
+  --font-sans: "InterVariable", ui-sans-serif, system-ui, sans-serif;
+  --font-sans--font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+
+  /* Strong ease-out: the curve does the work of feeling instant, so menus can
+     be short without looking abrupt. */
+  --ease-out-quart: cubic-bezier(0.165, 0.84, 0.44, 1);
+
+  /* Oxblood — deep ruby-red brand ramp (OKLCH, hue ~20-26) */
+  --color-oxblood-50: oklch(0.971 0.008 20);
+  --color-oxblood-100: oklch(0.936 0.02 20);
+  --color-oxblood-200: oklch(0.885 0.04 21);
+  --color-oxblood-300: oklch(0.808 0.075 22);
+  --color-oxblood-400: oklch(0.704 0.125 23);
+  --color-oxblood-500: oklch(0.577 0.17 25);
+  --color-oxblood-600: oklch(0.497 0.17 26);
+  --color-oxblood-700: oklch(0.432 0.148 26);
+  --color-oxblood-800: oklch(0.375 0.122 25);
+  --color-oxblood-900: oklch(0.326 0.098 23);
+  --color-oxblood-950: oklch(0.239 0.07 22);
+}
+
+/* Depth tokens. Values flip with the OS theme so surfaces need no dark:
+   overrides. Light depth comes from stacked black shadows; dark depth comes
+   from a top sheen plus a lit 1px top edge — a black shadow alone is invisible
+   on a dark canvas, so the light has to come from above the surface instead. */
+:root {
+  --surface: var(--color-white);
+  --surface-sunken: var(--color-neutral-100);
+  --surface-sheen: none;
+  --chart-grid: rgb(10 10 10 / 0.07);
+  --chart-axis: rgb(10 10 10 / 0.22);
+  --hatch: repeating-linear-gradient(45deg, rgb(10 10 10 / 0.08) 0 1px, transparent 1px 7px);
+  --elevation-raised:
+    0 0 0 1px rgb(0 0 0 / 0.05),
+    0 1px 2px rgb(0 0 0 / 0.06),
+    0 6px 16px -6px rgb(0 0 0 / 0.12);
+}
+
+:root.dark {
+  /* Near-achromatic charcoal: the neutrals stay out of the way so oxblood is
+     the only color on screen. */
+  --surface: oklch(0.239 0.003 60);
+  --surface-sunken: oklch(0.176 0.002 60);
+  /* Sheen fades over a fixed distance, not a percentage — a percentage makes
+     tall cards read as a bevel band rather than a lit top edge. */
+  --chart-grid: rgb(255 255 255 / 0.07);
+  --chart-axis: rgb(255 255 255 / 0.28);
+  --hatch: repeating-linear-gradient(45deg, rgb(255 255 255 / 0.09) 0 1px, transparent 1px 7px);
+  --surface-sheen: linear-gradient(to bottom, rgb(255 255 255 / 0.02), rgb(255 255 255 / 0) 48px);
+  --elevation-raised:
+    inset 0 1px 0 rgb(255 255 255 / 0.03),
+    0 0 0 1px rgb(255 255 255 / 0.06),
+    0 2px 4px rgb(0 0 0 / 0.35),
+    0 10px 24px -10px rgb(0 0 0 / 0.6);
+}
+
+@utility canvas {
+  background-color: var(--surface-sunken);
+}
+
+@utility surface {
+  background-color: var(--surface);
+}
+
+/* Marketing texture. The grid sits on the fixed oxblood band, so its hairlines
+   are white in both themes; the hatch bands flip with the theme instead. */
+@utility blueprint-grid {
+  background-image:
+    repeating-linear-gradient(to right, rgb(255 255 255 / 0.08) 0 1px, transparent 1px 88px),
+    repeating-linear-gradient(to bottom, rgb(255 255 255 / 0.08) 0 1px, transparent 1px 88px);
+}
+
+@utility hatch {
+  background-image: var(--hatch);
+}
+
+/* The events bulk bar is pinned bottom-centre, which is exactly where the
+   toasts sit on narrow screens. While a selection is live, the stack steps
+   above the bar rather than under it. */
+@media (width < 40rem) {
+  html[data-selecting] .toast-stack {
+    bottom: calc(5.5rem + env(safe-area-inset-bottom));
+  }
+}
+
+@utility elevated {
+  background-color: var(--surface);
+  background-image: var(--surface-sheen);
+  box-shadow: var(--elevation-raised);
+}

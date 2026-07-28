@@ -14,11 +14,14 @@ chrono = "0.4"
 clap = { version = "4", features = ["derive"] }
 futures-util = "0.3"
 gethostname = "1"
+# vendored: builds libdbus from source instead of requiring libdbus-1-dev on
+# the build machine, so a Linux `cargo install` works without apt first.
 keyring = { version = "3", features = [
     "apple-native",
     "windows-native",
     "sync-secret-service",
     "crypto-rust",
+    "vendored",
 ] }
 open = "5"
 reqwest = { version = "0.12", default-features = false, features = [

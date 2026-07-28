@@ -14,6 +14,9 @@ class Connection < ApplicationRecord
   RETRY_MAX_SPAN = 7.days
 
   scope :unhealthy, -> { where.not(unhealthy_since: nil) }
+  # A disabled connection isn't delivering, so its last health is stale — the
+  # banner wants the ones still trying. Paused counts: it can resume.
+  scope :actively_unhealthy, -> { unhealthy.where.not(status: "disabled") }
 
   # prefix: the legacy `active` boolean column still exists (kept for deploy
   # overlap), so bare enum methods would collide with `active?`.

@@ -1,104 +1,121 @@
-<% content_for :title, "Alert webhook" %>
+<% content_for :title, "Organization settings · Alerts" %>
 <% organization = Current.organization %>
-<div class="w-full max-w-4xl mx-auto py-16">
-  <div class="flex items-center justify-between mb-6">
-    <h1 class="text-2xl font-semibold">Alert webhook</h1>
-    <%= link_to "Dashboard", root_path, class: "text-sm text-gray-500 hover:text-gray-700" %>
-  </div>
-
-  <p class="text-sm text-gray-600 mb-6 max-w-lg">
-    The three incident alerts that go out by email also POST signed JSON here. Point your chat or
-    incident tooling at it to get them without watching an inbox.
+<%
+  channels = [
+    { key: "webhook", name: "Webhook", attribute: :alert_webhook_url,
+      placeholder: "https://hooks.example.com/hookrail",
+      hint: "Signed JSON, one POST per alert." },
+    { key: "slack", name: "Slack", attribute: :slack_webhook_url,
+      placeholder: "https://hooks.slack.com/services/…",
+      hint: "An incoming webhook URL from a Slack app. Posts land in the channel it was created for." },
+    { key: "discord", name: "Discord", attribute: :discord_webhook_url,
+      placeholder: "https://discord.com/api/webhooks/…",
+      hint: "A channel webhook URL from Discord's channel integration settings." }
+  ]
+  configured, unconfigured = channels.partition { |c| organization.public_send(c[:attribute]).present? }
+  card = "ease-out-quart flex w-full aspect-square cursor-pointer flex-col items-center justify-center gap-2 rounded-xl transition-[background-color] duration-150 inset-ring inset-ring-neutral-950/10 hover:bg-neutral-950/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-950/40 motion-reduce:transition-none dark:inset-ring-white/10 dark:hover:bg-white/5 dark:focus-visible:outline-white/40"
+%>
+<div>
+  <h1 class="<%= ui(:heading) %>">Alerts</h1>
+  <p class="mt-1 max-w-2xl <%= ui(:hint) %>">
+    The three incident alerts go out by email, and can also be posted to a channel. A webhook gets signed
+    JSON, one POST per alert; chat channels get a message when a new issue opens: delivery failures,
+    transformation errors, or quarantined webhooks. Repeats of an open issue don't re-notify.
   </p>
 
-  <%= form_with model: organization, url: alert_webhook_path, method: :patch, scope: :organization,
-        class: "space-y-4 max-w-lg" do |f| %>
-    <% if organization.errors.any? %>
-      <div class="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-800">
-        <ul class="list-disc list-inside">
-          <% organization.errors.full_messages.each do |m| %><li><%= m %></li><% end %>
-        </ul>
-      </div>
-    <% end %>
-
-    <div>
-      <%= f.label :alert_webhook_url, "URL", class: "block text-sm font-medium text-gray-700 mb-1" %>
-      <%= f.text_field :alert_webhook_url, placeholder: "https://hooks.example.com/hookrail",
-            class: "w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-mono" %>
-    </div>
-
-    <div class="border-t pt-4">
-      <h2 class="text-sm font-semibold text-gray-700 mb-1">Chat notifications</h2>
-      <p class="text-xs text-gray-500 mb-3">Posted when a new issue opens — delivery failures, transformation errors, quarantined webhooks. Repeats of an open issue don't re-notify.</p>
-      <div class="space-y-4">
-        <div>
-          <%= f.label :slack_webhook_url, "Slack incoming webhook URL", class: "block text-sm font-medium text-gray-700 mb-1" %>
-          <%= f.text_field :slack_webhook_url, placeholder: "https://hooks.slack.com/services/…",
-                class: "w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-mono" %>
+  <% if configured.any? %>
+    <section class="mt-6 max-w-2xl space-y-3">
+      <% configured.each do |channel| %>
+        <div class="rounded-xl p-4 inset-ring inset-ring-neutral-950/10 dark:inset-ring-white/10"
+             data-controller="dialog" <%= tag.attributes("data-dialog-open-value": true) if organization.errors[channel[:attribute]].any? %>>
+          <div class="flex flex-wrap items-center gap-3">
+            <%= render "channel_logo", channel: channel[:key], class: "size-5 shrink-0" %>
+            <span class="font-medium text-neutral-950 dark:text-white"><%= channel[:name] %></span>
+            <span class="max-w-xs min-w-0 truncate font-mono text-xs text-neutral-500 dark:text-neutral-400"
+                  title="<%= organization.public_send(channel[:attribute]) %>"><%= organization.public_send(channel[:attribute]) %></span>
+            <div class="ml-auto flex items-center gap-3">
+              <button type="button" data-action="dialog#open" class="cursor-pointer <%= ui(:link) %>">Edit</button>
+              <% if channel[:key] == "webhook" %>
+                <%= button_to "Remove", alert_webhook_path, method: :delete,
+                      class: ui(:danger_link), form: { class: "inline" },
+                      data: { turbo_confirm: "Remove the alert webhook? The signing secret is discarded with it." } %>
+              <% else %>
+                <%= form_with url: alert_webhook_path, method: :patch, class: "inline",
+                      data: { turbo_confirm: "Remove this channel? Alerts stop posting to it immediately." } do %>
+                  <%= hidden_field_tag "organization[#{channel[:attribute]}]", "" %>
+                  <%= submit_tag "Remove", name: nil, class: ui(:danger_link) %>
+                <% end %>
+              <% end %>
+            </div>
+          </div>
+          <%= render "channel_dialog", channel: channel, organization: organization %>
         </div>
-        <div>
-          <%= f.label :discord_webhook_url, "Discord webhook URL", class: "block text-sm font-medium text-gray-700 mb-1" %>
-          <%= f.text_field :discord_webhook_url, placeholder: "https://discord.com/api/webhooks/…",
-                class: "w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-mono" %>
-        </div>
-      </div>
-    </div>
-
-    <%= f.submit "Save", class: "rounded-md bg-blue-600 text-white px-3 py-1.5 text-sm hover:bg-blue-700 cursor-pointer" %>
+      <% end %>
+    </section>
   <% end %>
 
-  <% if organization.alert_webhook_configured? %>
-    <div class="mt-8 max-w-lg">
-      <h2 class="text-sm font-medium text-gray-700 mb-1">Signing secret</h2>
-      <div class="select-all break-all rounded-md border border-gray-200 bg-gray-50 px-3 py-2 font-mono text-sm">
-        <%= organization.alert_webhook_secret %>
+  <% if unconfigured.any? %>
+    <section class="mt-6">
+      <h2 class="<%= ui(:section) %>">Add a channel</h2>
+      <div class="mt-3 grid max-w-md grid-cols-3 gap-3">
+        <% unconfigured.each do |channel| %>
+          <div data-controller="dialog" <%= tag.attributes("data-dialog-open-value": true) if organization.errors[channel[:attribute]].any? %>>
+            <button type="button" data-action="dialog#open" title="<%= channel[:name] %>" class="<%= card %>">
+              <%= render "channel_logo", channel: channel[:key], class: "size-7" %>
+              <span class="text-xs text-neutral-500 dark:text-neutral-400"><%= channel[:name] %></span>
+            </button>
+            <%= render "channel_dialog", channel: channel, organization: organization %>
+          </div>
+        <% end %>
       </div>
-      <p class="mt-2 text-xs text-gray-500">
-        Verify <code>X-Hookrail-Signature</code> as the HMAC-SHA256 of <code>"timestamp.body"</code> with this
-        secret — the same scheme as event deliveries, see the README.
-      </p>
-    </div>
+    </section>
   <% end %>
 
   <% if organization.alert_webhook_configured? || organization.chat_webhook_configured? %>
-    <div class="mt-4 flex items-center gap-4 max-w-lg">
-      <%= button_to "Send test alert", test_alert_webhook_path,
-            class: "rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer" %>
-      <% if organization.alert_webhook_configured? %>
-        <%= button_to "Remove", alert_webhook_path, method: :delete,
-              class: "text-red-600 hover:underline text-sm cursor-pointer",
-              data: { turbo_confirm: "Remove the alert webhook? The signing secret is discarded with it." } %>
-      <% end %>
+    <div class="mt-6">
+      <%= button_to "Send test alert", test_alert_webhook_path, class: ui(:button_secondary) %>
     </div>
   <% end %>
 
-  <div class="mt-10 max-w-lg">
-    <h2 class="text-sm font-semibold text-gray-500 uppercase mb-2">Alert types</h2>
-    <table class="w-full text-sm">
-      <thead class="text-left text-gray-500 border-b">
-        <tr>
-          <th class="py-2 font-medium">Type</th>
-          <th class="py-2 font-medium">Sent when</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr class="border-b">
-          <td class="py-2 font-mono text-xs">connection.unhealthy</td>
-          <td class="py-2">A connection crossed its consecutive-failure threshold.</td>
-        </tr>
-        <tr class="border-b">
-          <td class="py-2 font-mono text-xs">connection.recovered</td>
-          <td class="py-2">An unhealthy connection delivered successfully again.</td>
-        </tr>
-        <tr class="border-b">
-          <td class="py-2 font-mono text-xs">webhook.quarantined</td>
-          <td class="py-2">An inbound webhook failed signature verification.</td>
-        </tr>
-        <tr class="border-b">
-          <td class="py-2 font-mono text-xs">test</td>
-          <td class="py-2">You hit <em>Send test alert</em>.</td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
+  <% if organization.alert_webhook_configured? %>
+    <section class="mt-10 max-w-2xl">
+      <h2 class="<%= ui(:section) %>">Signing secret</h2>
+      <div class="mt-2 rounded-lg bg-neutral-950/5 px-3 py-2 font-mono text-sm break-all select-all inset-ring inset-ring-neutral-950/10 dark:bg-white/5 dark:inset-ring-white/10">
+        <%= organization.alert_webhook_secret %>
+      </div>
+      <p class="mt-2 <%= ui(:hint) %>">
+        Verify <code>X-Hookrail-Signature</code> as the HMAC-SHA256 of <code>"timestamp.body"</code> with this
+        secret. Same scheme as event deliveries, see the README.
+      </p>
+    </section>
+  <% end %>
+
+  <section class="mt-10 max-w-2xl">
+    <h2 class="<%= ui(:section) %>">Alert types</h2>
+    <div class="mt-2 <%= ui(:scroller) %>">
+      <div class="<%= ui(:scroller_inner) %>">
+        <table class="w-full text-sm">
+          <thead class="<%= ui(:table_head) %>">
+            <tr>
+              <th class="<%= ui(:th) %> w-px pr-6">Type</th>
+              <th class="<%= ui(:th) %> w-full">Sent when</th>
+            </tr>
+          </thead>
+          <tbody class="<%= ui(:table_body) %>">
+            <% {
+                 "connection.unhealthy" => "A connection crossed its consecutive-failure threshold.",
+                 "connection.recovered" => "An unhealthy connection delivered successfully again.",
+                 "webhook.quarantined" => "An inbound webhook failed signature verification.",
+                 "test" => "You hit Send test alert."
+               }.each do |type, when_sent| %>
+              <tr>
+                <td class="<%= ui(:td) %> w-px pr-6 font-mono text-xs"><%= type %></td>
+                <td class="<%= ui(:td_muted) %> w-full"><%= when_sent %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
 </div>

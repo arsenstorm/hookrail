@@ -1,0 +1,19 @@
+<%
+  # locals: type ("area"|"bars"), labels, series, aria_label
+%>
+<div class="relative mt-3" data-controller="dither-chart"
+     data-dither-chart-type-value="<%= type %>"
+     data-dither-chart-labels-value="<%= labels.to_json %>"
+     data-dither-chart-series-value="<%= series.to_json %>"
+     data-action="pointermove->dither-chart#hover pointerleave->dither-chart#leave">
+  <canvas class="block h-40 w-full" role="img" aria-label="<%= aria_label %>"
+          data-dither-chart-target="canvas"></canvas>
+
+  <div hidden aria-hidden="true" data-dither-chart-target="tooltip"
+       class="pointer-events-none absolute top-0 z-10 w-max -translate-x-1/2 rounded-md surface px-2.5 py-1.5 text-xs whitespace-nowrap shadow-lg tabular-nums inset-ring inset-ring-neutral-950/10 dark:shadow-none dark:inset-ring-white/10"></div>
+
+  <div class="mt-1 flex justify-between text-xs text-neutral-500 tabular-nums dark:text-neutral-400">
+    <span><%= labels.first %></span>
+    <span><%= labels.last %></span>
+  </div>
+</div>

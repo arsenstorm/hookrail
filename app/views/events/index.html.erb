@@ -1,117 +1,246 @@
 <% content_for :title, "Events" %>
-<div class="w-full max-w-4xl mx-auto py-16">
-  <div class="flex items-center justify-between mb-6">
-    <h1 class="text-2xl font-semibold">Events</h1>
-    <%= link_to "Dashboard", root_path, class: "text-sm text-gray-500 hover:text-gray-700" %>
+<%
+  filtering = "min-w-0 rounded-md bg-transparent px-2.5 py-1.5 text-sm text-neutral-950 inset-ring inset-ring-neutral-950/15 focus:outline-2 focus:outline-offset-2 focus:outline-neutral-950/40 dark:text-white dark:inset-ring-white/15 dark:focus:outline-white/40"
+%>
+<div>
+  <h1 class="<%= ui(:heading) %>">Events</h1>
+  <p class="mt-1 <%= ui(:hint) %>">
+    Everything <%= Current.project.name %> has received, newest first. Open one to see its payload and every delivery attempt.
+  </p>
+
+  <%# The time range owns its own control (presets + custom range), so it sits
+      beside the form rather than inside it — a form can't nest another. %>
+  <%
+    facets_active = @source_id || @status
+    transitions = {
+      "data-transition-enter-active": "transition duration-[120ms] ease-out-quart motion-reduce:transition-none",
+      "data-transition-enter-from": "opacity-0 scale-[0.98]",
+      "data-transition-enter-to": "opacity-100 scale-100",
+      "data-transition-leave-active": "transition duration-75 ease-out-quart motion-reduce:transition-none",
+      "data-transition-leave-from": "opacity-100 scale-100",
+      "data-transition-leave-to": "opacity-0 scale-[0.98]"
+    }
+  %>
+  <div class="mt-6 flex flex-wrap items-center gap-2">
+    <%= render "events/time_range" %>
+
+    <%= form_with url: events_path, method: :get, class: "flex min-w-0 grow flex-wrap items-center gap-2" do |f| %>
+      <%= hidden_field_tag :range, @range, id: nil if @range %>
+      <%= hidden_field_tag :from, @from, id: nil if @from.present? %>
+      <%= hidden_field_tag :to, @to, id: nil if @to.present? %>
+
+      <%= f.label :q, "Body search", class: "sr-only" %>
+      <%= f.text_field :q, value: @q, placeholder: "Search body…", class: "#{filtering} w-full min-w-40 grow sm:w-auto" %>
+
+      <div class="relative" data-controller="dropdown"
+           data-action="click@window->dropdown#hide keydown@window->dropdown#escape">
+        <button type="button" aria-label="Filters" aria-haspopup="dialog" aria-expanded="false"
+                data-dropdown-target="trigger" data-action="dropdown#toggle"
+                class="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-md text-neutral-500 inset-ring inset-ring-neutral-950/15 hover:bg-neutral-950/5 hover:text-neutral-950 aria-expanded:bg-neutral-950/5 dark:text-neutral-400 dark:inset-ring-white/15 dark:hover:bg-white/5 dark:hover:text-white dark:aria-expanded:bg-white/5 <%= "bg-neutral-950/5 text-neutral-950 dark:bg-white/5 dark:text-white" if facets_active %>">
+          <svg viewBox="0 0 16 16" class="size-4 fill-current" aria-hidden="true">
+            <path fill-rule="evenodd" d="M1 2.75A.75.75 0 0 1 1.75 2h12.5a.75.75 0 0 1 .53 1.28L10 8.06v4.32a.75.75 0 0 1-.33.62l-2.5 1.67A.75.75 0 0 1 6 14.05V8.06L1.22 3.28A.75.75 0 0 1 1 2.75Z" clip-rule="evenodd"/>
+          </svg>
+        </button>
+
+        <div role="dialog" aria-label="Filters" data-dropdown-target="menu" <%= tag.attributes(transitions) %>
+             class="hidden absolute top-full right-0 z-20 mt-1 w-64 origin-top rounded-xl surface p-3 shadow-lg inset-ring inset-ring-neutral-950/10 dark:shadow-none dark:inset-ring-white/10">
+          <%= f.label :source_id, "Source", class: "text-xs font-medium text-neutral-500 dark:text-neutral-400" %>
+          <span class="relative mt-1.5 flex">
+            <%= f.select :source_id,
+                  options_for_select(@sources.map { |s| [ s.name, s.id ] }, @source_id),
+                  { include_blank: "All sources" }, class: "#{ui(:select)} w-full" %>
+            <%= render "shared/select_chevron" %>
+          </span>
+
+          <%= f.label :status, "Status", class: "mt-3 block text-xs font-medium text-neutral-500 dark:text-neutral-400" %>
+          <span class="relative mt-1.5 flex">
+            <%= f.select :status,
+                  options_for_select(Event::DELIVERY_STATUSES.map { |s| [ s.capitalize, s ] }, @status),
+                  { include_blank: "Any status" }, class: "#{ui(:select)} w-full" %>
+            <%= render "shared/select_chevron" %>
+          </span>
+
+          <%= f.submit "Apply", name: nil, class: "#{ui(:button_secondary)} mt-3 w-full" %>
+        </div>
+      </div>
+
+      <%= f.submit "Filter", name: nil, class: ui(:button_primary) %>
+      <% if @filters_active %>
+        <%= link_to "Reset", events_path, class: ui(:button_secondary) %>
+      <% end %>
+    <% end %>
   </div>
 
-  <%= form_with url: events_path, method: :get, class: "flex flex-wrap items-end gap-3 mb-6" do |f| %>
-    <div class="flex flex-col">
-      <label class="text-xs text-gray-500 mb-1">Source</label>
-      <%= f.select :source_id,
-            options_for_select(@sources.map { |s| [ s.name, s.id ] }, @source_id),
-            { include_blank: "All sources" },
-            class: "rounded-md border border-gray-300 px-2 py-1.5 text-sm" %>
-    </div>
-    <div class="flex flex-col">
-      <label class="text-xs text-gray-500 mb-1">Status</label>
-      <%= f.select :status,
-            options_for_select(Event::DELIVERY_STATUSES.map { |s| [ s.capitalize, s ] }, @status),
-            { include_blank: "Any status" },
-            class: "rounded-md border border-gray-300 px-2 py-1.5 text-sm" %>
-    </div>
-    <div class="flex flex-col">
-      <label class="text-xs text-gray-500 mb-1">From</label>
-      <%= f.date_field :from, value: @from, class: "rounded-md border border-gray-300 px-2 py-1.5 text-sm" %>
-    </div>
-    <div class="flex flex-col">
-      <label class="text-xs text-gray-500 mb-1">To</label>
-      <%= f.date_field :to, value: @to, class: "rounded-md border border-gray-300 px-2 py-1.5 text-sm" %>
-    </div>
-    <div class="flex flex-col grow">
-      <label class="text-xs text-gray-500 mb-1">Body search</label>
-      <%= f.text_field :q, value: @q, placeholder: "substring…",
-            class: "rounded-md border border-gray-300 px-2 py-1.5 text-sm w-full" %>
-    </div>
-    <%= f.submit "Filter", name: nil,
-          class: "rounded-md bg-blue-600 text-white px-3 py-1.5 text-sm hover:bg-blue-700 cursor-pointer" %>
-    <% if @filters_active %>
-      <%= link_to "Clear", events_path, class: "px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700" %>
-    <% end %>
-  <% end %>
-
-  <% if can_edit? && @retryable_count > 0 %>
-    <div class="mb-6">
-      <%= button_to "Retry #{pluralize(@retryable_count, "failed delivery")}", bulk_retry_events_path(@filter_params), method: :post,
-            class: "rounded-md border border-red-300 text-red-700 px-3 py-1.5 text-sm hover:bg-red-50 cursor-pointer",
-            data: { turbo_confirm: "Retry #{pluralize(@retryable_count, "failed delivery")} matching the current filters?" } %>
-    </div>
-  <% end %>
-
-  <%# Rarer, heavier action than retry: same row weight, quieter chrome, explicit target. %>
-  <% if can_edit? && @events.any? && @connections.any? %>
-    <%= form_with url: bulk_replay_events_path, class: "flex flex-wrap items-end gap-2 mb-6" do |f| %>
-      <% @filter_params.each do |name, value| %>
-        <%= hidden_field_tag name, value, id: nil %>
-      <% end %>
-      <div class="flex flex-col">
-        <label class="text-xs text-gray-500 mb-1">Replay filtered events to</label>
-        <%= f.select :connection_id,
-              options_for_select(@connections.map { |c| [ "#{c.source.name} → #{c.destination.name}", c.id ] }),
-              {},
-              class: "rounded-md border border-gray-300 px-2 py-1.5 text-sm" %>
-      </div>
-      <%= f.submit "Replay", name: nil,
-            class: "rounded-md border border-gray-300 text-gray-600 px-3 py-1.5 text-sm hover:bg-gray-50 cursor-pointer",
-            data: { turbo_confirm: "Replay #{pluralize(@filtered_count, "filtered event")} to the chosen connection? " \
-                                   "Events already in flight on it, and events its routing rule filters out, are skipped." } %>
-    <% end %>
-  <% end %>
-
   <% if @events.empty? %>
-    <% if @filters_active %>
-      <p class="text-gray-500">No events match these filters.
-        <%= link_to "Clear filters", events_path, class: "text-blue-600 hover:underline" %>.
-      </p>
-    <% else %>
-      <p class="text-gray-500">No events yet.</p>
-    <% end %>
+    <%# No rows means no selection, no bulk actions and no count line — so the
+        empty table drops the form, the bar and the checkbox column with them. %>
+    <%
+      empty = if @filters_active
+        { title: "No events match these filters",
+          body: "Widen the date range or clear the filters to see everything this project has received.",
+          cta_label: "Clear filters", cta_path: events_path, gated: false }
+      else
+        { title: "No events yet",
+          body: "Point a webhook at one of your source URLs and every request lands here within seconds.",
+          cta_label: "View sources", cta_path: sources_path, gated: false }
+      end
+    %>
+    <div class="mt-6 <%= ui(:scroller) %>">
+      <div class="<%= ui(:scroller_inner) %>">
+        <table class="w-full text-sm">
+          <thead class="<%= ui(:table_head) %>">
+            <tr>
+              <th class="<%= ui(:th) %> w-px pr-6">Received</th>
+              <th class="<%= ui(:th) %> w-px pr-6">Method</th>
+              <th class="<%= ui(:th) %> w-full">Source</th>
+              <th class="<%= ui(:th) %> w-px text-right">Delivery</th>
+            </tr>
+          </thead>
+          <tbody class="<%= ui(:table_body) %>">
+            <%= render "shared/empty_row", colspan: 4, **empty %>
+          </tbody>
+        </table>
+      </div>
+    </div>
   <% else %>
-    <table class="w-full text-sm">
-      <thead class="text-left text-gray-500 border-b">
-        <tr>
-          <th class="py-2 font-medium">Received</th>
-          <th class="py-2 font-medium">Method</th>
-          <th class="py-2 font-medium">Source</th>
-          <th class="py-2 font-medium">Delivery</th>
-        </tr>
-      </thead>
-      <tbody>
-        <% @events.each do |event| %>
-          <tr class="border-b hover:bg-gray-50">
-            <td class="py-2">
-              <%= link_to event.received_at.strftime("%Y-%m-%d %H:%M:%S"), event_path(event), class: "text-blue-600 hover:underline" %>
-            </td>
-            <td class="py-2"><%= event.http_method %></td>
-            <td class="py-2"><%= event.source.name %></td>
-            <td class="py-2">
-              <% if event.duplicate? %>
-                <span class="rounded-full bg-gray-100 text-gray-600 px-2 py-0.5 text-xs">duplicate</span>
-              <% else %>
-                <%= delivery_summary(event) %>
-              <% end %>
-            </td>
-          </tr>
+    <%# Bulk actions follow the selection, so the whole table lives in one form:
+        the row checkboxes are the payload and the two submits differ only by
+        formaction. A read-only member gets the table without the column. %>
+    <%
+      selectable = can_edit? && (@connections.any? || @retryable_count > 0)
+      checkbox = "size-4 cursor-pointer accent-oxblood-700 dark:accent-oxblood-500 dark:scheme-dark"
+      # w-px + pr-6 makes the cell exactly 40px wide, and the row is 40px tall:
+      # the click target is the cell, not the 16px box inside it.
+      checkbox_cell = "w-px cursor-pointer pr-6 align-middle select-none"
+    %>
+    <p class="mt-6 <%= ui(:hint) %>">
+      <span class="tabular-nums"><%= @filtered_count %></span>
+      <%= "event".pluralize(@filtered_count) %><%= " matching these filters" if @filters_active %>
+    </p>
+
+    <%= form_with url: bulk_replay_events_path, data: (selectable ? { controller: "selection", selection_total_value: @filtered_count, action: "keydown@window->selection#escape" } : {}) do |f| %>
+      <% if selectable %>
+        <% @filter_params.each do |name, value| %>
+          <%= hidden_field_tag name, value, id: nil %>
         <% end %>
-      </tbody>
-    </table>
+
+        <%# Floats over the page instead of pushing it: selecting a row must not
+            move anything. Still inside the form, so the row checkboxes are the
+            payload no matter where it is painted. z-40 clears the toasts, which
+            step up out of its way while a selection is live (see _flash). %>
+        <div data-selection-target="bar" inert
+             class="fixed inset-x-4 bottom-[calc(1rem_+_env(safe-area-inset-bottom))] z-40 mx-auto flex max-w-3xl translate-y-3 flex-wrap items-center gap-x-4 gap-y-3 rounded-xl elevated px-3 py-2.5 opacity-0 transition-[opacity,translate] duration-75 ease-out-quart data-[open]:translate-y-0 data-[open]:opacity-100 data-[open]:duration-150 motion-reduce:transition-none">
+          <p class="<%= ui(:hint) %>" aria-live="polite">
+            <span data-selection-target="count" class="font-medium tabular-nums text-neutral-950 dark:text-white">0</span>
+            selected
+          </p>
+
+          <div class="ml-auto flex flex-wrap items-center gap-2">
+            <% if @retryable_count > 0 %>
+              <button type="submit" formaction="<%= bulk_retry_events_path %>" data-selection-target="confirm"
+                      data-confirm-selected="Retry the failed deliveries on the selected events?"
+                      data-confirm-all="Retry <%= pluralize(@retryable_count, "failed delivery") %> matching the current filters?"
+                      class="<%= ui(:button_danger) %> inset-ring inset-ring-red-600/20 dark:inset-ring-red-400/25">
+                Retry failed deliveries
+              </button>
+            <% end %>
+
+            <%# Rarer, heavier action than retry: quieter chrome, explicit target. %>
+            <% if @connections.any? %>
+              <%= f.label :connection_id, "Replay selected events to", class: "sr-only" %>
+              <span class="relative inline-flex min-w-0">
+                <%= f.select :connection_id,
+                      options_for_select(@connections.map { |c| [ "#{c.source.name} → #{c.destination.name}", c.id ] }),
+                      {}, class: "#{ui(:select)} w-56 max-w-full" %>
+                <%= render "shared/select_chevron" %>
+              </span>
+              <button type="submit" data-selection-target="confirm"
+                      data-confirm-selected="Replay the selected events to the chosen connection? Events already in flight on it, and events its routing rule filters out, are skipped."
+                      data-confirm-all="Replay all <%= pluralize(@filtered_count, "event") %> matching these filters to the chosen connection? Events already in flight on it, and events its routing rule filters out, are skipped."
+                      class="<%= ui(:button_secondary) %>">Replay</button>
+            <% end %>
+
+            <button type="button" data-action="selection#clear" class="<%= ui(:button_secondary) %>">Clear selection</button>
+          </div>
+
+          <%# The filters can match more than this page holds, so whole-page
+              selection offers the wider set as an explicit second step. %>
+          <% if @filtered_count > @events.size %>
+            <p data-selection-target="pageNote" hidden class="basis-full <%= ui(:hint) %>">
+              All <span class="tabular-nums"><%= @events.size %></span> on this page selected.
+              <button type="button" data-action="selection#selectAllFiltered"
+                      class="<%= ui(:link) %> relative cursor-pointer underline-offset-2 before:absolute before:-inset-y-2.5 before:-inset-x-1 hover:underline">
+                Select all <%= @filtered_count %> matching these filters
+              </button>
+            </p>
+            <p data-selection-target="allNote" hidden class="basis-full <%= ui(:hint) %>">
+              All <span class="tabular-nums"><%= @filtered_count %></span> events matching these filters are selected.
+            </p>
+            <input type="hidden" name="all_filtered" value="1" disabled data-selection-target="allFiltered">
+          <% end %>
+        </div>
+      <% end %>
+
+      <div class="mt-3 <%= ui(:scroller) %>">
+        <div class="<%= ui(:scroller_inner) %>">
+          <table class="w-full text-sm">
+            <thead class="<%= ui(:table_head) %>">
+              <tr>
+                <% if selectable %>
+                  <th class="<%= ui(:th) %> <%= checkbox_cell %>" data-action="click->selection#toggleAll">
+                    <input type="checkbox" class="<%= checkbox %>" data-selection-target="all"
+                           aria-label="Select every event on this page">
+                  </th>
+                <% end %>
+                <th class="<%= ui(:th) %> w-px pr-6">Received</th>
+                <th class="<%= ui(:th) %> w-px pr-6">Method</th>
+                <th class="<%= ui(:th) %> w-full">Source</th>
+                <th class="<%= ui(:th) %> w-px text-right">Delivery</th>
+              </tr>
+            </thead>
+            <tbody class="<%= ui(:table_body) %>">
+              <% @events.each do |event| %>
+                <% received = timestamp_text(event.received_at) %>
+                <tr>
+                  <% if selectable %>
+                    <td class="<%= ui(:td) %> <%= checkbox_cell %>" data-action="click->selection#toggleRow">
+                      <input type="checkbox" name="event_ids[]" value="<%= event.id %>" class="<%= checkbox %>"
+                             data-selection-target="row" aria-label="Select event received <%= received %>">
+                    </td>
+                  <% end %>
+                  <td class="<%= ui(:td) %> w-px pr-6 tabular-nums">
+                    <%= link_to timestamp_tag(event.received_at, tabindex: nil), event_path(event),
+                          class: "font-medium hover:underline" %>
+                  </td>
+                  <td class="<%= ui(:td_muted) %> w-px pr-6">
+                    <span class="rounded-md bg-neutral-950/5 px-1.5 py-0.5 font-mono text-xs dark:bg-white/10"><%= event.http_method %></span>
+                  </td>
+                  <td class="<%= ui(:td_muted) %> w-full"><%= event.source.name %></td>
+                  <td class="<%= ui(:td) %> w-px text-right">
+                    <% if event.duplicate? %>
+                      <span class="<%= ui(:badge) %> <%= ui(:badge_neutral) %>">duplicate</span>
+                    <% else %>
+                      <span class="<%= delivery_badge_classes(event) %>"><%= delivery_summary(event) %></span>
+                    <% end %>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    <% end %>
 
     <%# ponytail: forward-only cursor. "Newest" + browser-back cover "prev"; add a prev-cursor stack only if operators ask. %>
-    <div class="flex items-center justify-between mt-4">
-      <%= link_to "← Newest", events_path(@filter_params), class: "text-sm text-gray-500 hover:text-gray-700" %>
-      <% if @next_cursor %>
-        <%= link_to "Next →", events_path(@filter_params.merge(cursor: @next_cursor)), class: "text-sm text-blue-600 hover:underline" %>
-      <% end %>
-    </div>
+    <% if params[:cursor].present? || @next_cursor %>
+      <div class="mt-4 flex items-center justify-end gap-2">
+        <% if params[:cursor].present? %>
+          <%= link_to "← Newest", events_path(@filter_params), class: ui(:button_secondary) %>
+        <% end %>
+        <% if @next_cursor %>
+          <%= link_to "Next →", events_path(@filter_params.merge(cursor: @next_cursor)), class: ui(:button_secondary) %>
+        <% end %>
+      </div>
+    <% end %>
   <% end %>
 </div>

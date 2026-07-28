@@ -1,49 +1,99 @@
-<% content_for :title, "Projects" %>
-<div class="w-full max-w-4xl mx-auto py-16">
-  <div class="flex items-center justify-between mb-6">
-    <h1 class="text-2xl font-semibold">Projects</h1>
-    <%= link_to "Dashboard", root_path, class: "text-sm text-gray-500 hover:text-gray-700" %>
+<% content_for :title, "Organization settings · Projects" %>
+<%
+  menu_item = "flex w-full cursor-pointer rounded-sm px-2.5 py-1.5 text-left text-sm font-medium"
+  menu_item_neutral = "#{menu_item} text-neutral-600 hover:bg-neutral-950/5 hover:text-neutral-950 dark:text-neutral-400 dark:hover:bg-white/5 dark:hover:text-white"
+  menu_item_danger = "#{menu_item} text-red-700 hover:bg-red-50 dark:text-red-300 dark:hover:bg-red-950/40"
+%>
+<div>
+  <div data-controller="dialog">
+    <div class="flex flex-wrap items-center justify-between gap-4">
+      <h1 class="<%= ui(:heading) %>">Projects</h1>
+      <button type="button" data-action="dialog#open" class="<%= ui(:button_primary) %>">New project</button>
+    </div>
+
+    <dialog data-dialog-target="dialog" aria-labelledby="new-project-heading"
+            class="m-auto w-full max-w-sm rounded-xl p-5 elevated backdrop:bg-neutral-950/40 dark:backdrop:bg-neutral-950/60">
+      <h2 id="new-project-heading" class="<%= ui(:subheading) %>">New project</h2>
+      <%= form_with url: projects_path, scope: :project, class: "mt-4" do |form| %>
+        <%= form.label :name, "Project name", class: ui(:label) %>
+        <%= form.text_field :name, placeholder: "Staging", autofocus: true, class: "#{ui(:input)} mt-1.5" %>
+        <p class="mt-1.5 <%= ui(:hint) %>">Names are unique within the organization.</p>
+        <div class="mt-5 flex justify-end gap-3">
+          <button type="button" data-action="dialog#close" class="<%= ui(:button_secondary) %>">Cancel</button>
+          <%= form.submit "Create project", class: ui(:button_primary) %>
+        </div>
+      <% end %>
+    </dialog>
   </div>
 
-  <p class="text-sm text-gray-600 mb-6 max-w-lg">
-    Projects partition sources, destinations, and connections — use them to separate staging from
+  <p class="mt-1 max-w-2xl <%= ui(:hint) %>">
+    Projects partition sources, destinations, and connections. Use them to separate staging from
     production. Members see only the projects they're granted on the members page.
   </p>
 
-  <%= form_with url: projects_path, scope: :project, class: "flex gap-2 mb-8 max-w-lg" do |form| %>
-    <%= form.text_field :name, placeholder: "New project name",
-          class: "w-full rounded-md border border-gray-300 px-3 py-2 text-sm" %>
-    <%= form.submit "Create project",
-          class: "rounded-md bg-blue-600 text-white px-3 py-1.5 text-sm hover:bg-blue-700 cursor-pointer" %>
-  <% end %>
-
-  <table class="w-full text-sm">
-    <thead class="text-left text-gray-500 border-b">
-      <tr>
-        <th class="py-2 font-medium">Name</th>
-        <th class="py-2 font-medium">Created</th>
-        <th class="py-2 font-medium"></th>
-      </tr>
-    </thead>
-    <tbody>
-      <% @projects.each do |project| %>
-        <tr class="border-b hover:bg-gray-50">
-          <td class="py-2">
-            <%= form_with url: project_path(project), method: :patch, scope: :project, class: "flex gap-2" do |form| %>
-              <%= form.text_field :name, value: project.name,
-                    class: "w-full rounded-md border border-gray-300 px-3 py-2 text-sm" %>
-              <%= form.submit "Rename",
-                    class: "rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer" %>
-            <% end %>
-          </td>
-          <td class="py-2"><%= project.created_at.strftime("%Y-%m-%d") %></td>
-          <td class="py-2">
-            <%= button_to "Delete", project_path(project), method: :delete,
-                  class: "text-red-600 hover:underline text-sm cursor-pointer",
-                  data: { turbo_confirm: "Delete #{project.name}? Every source, destination, connection, event, and attempt in it is permanently deleted." } %>
-          </td>
+  <%# No scroller here: it clips the absolutely-positioned row menu. Three
+      narrow columns, so there was nothing to scroll anyway. %>
+  <div class="mt-6">
+    <table class="w-full text-sm">
+      <thead class="<%= ui(:table_head) %>">
+        <tr>
+          <th class="<%= ui(:th) %> w-full pr-6">Name</th>
+          <th class="<%= ui(:th) %> w-px pr-6">Created</th>
+          <th class="<%= ui(:th) %> w-px text-right"><span class="sr-only">Actions</span></th>
         </tr>
-      <% end %>
-    </tbody>
-  </table>
+      </thead>
+      <tbody class="<%= ui(:table_body) %>">
+        <% @projects.each do |project| %>
+          <tr>
+            <td class="<%= ui(:td) %> w-full pr-6 font-medium"><%= project.name %></td>
+            <td class="<%= ui(:td_muted) %> w-px pr-6"><%= timestamp_tag(project.created_at) %></td>
+            <td class="<%= ui(:td) %> w-px text-right">
+              <div data-controller="dialog">
+                <div class="relative inline-block text-left" data-controller="dropdown"
+                     data-action="click@window->dropdown#hide keydown@window->dropdown#escape">
+                  <button type="button" aria-haspopup="menu" aria-expanded="false" aria-label="Project actions"
+                          data-dropdown-target="trigger" data-action="dropdown#toggle"
+                          class="relative grid size-6 cursor-pointer place-items-center rounded-md text-neutral-500 before:absolute before:-inset-2 hover:bg-neutral-950/5 hover:text-neutral-950 aria-expanded:bg-neutral-950/5 dark:hover:bg-white/5 dark:hover:text-white dark:aria-expanded:bg-white/5">
+                    <svg viewBox="0 0 16 16" class="size-4 fill-current" aria-hidden="true">
+                      <path d="M8 3a1.25 1.25 0 1 0 0-2.5A1.25 1.25 0 0 0 8 3ZM8 9.25a1.25 1.25 0 1 0 0-2.5 1.25 1.25 0 0 0 0 2.5ZM8 15.5a1.25 1.25 0 1 0 0-2.5 1.25 1.25 0 0 0 0 2.5Z"/>
+                    </svg>
+                  </button>
+
+                  <div role="menu" data-dropdown-target="menu"
+                       data-transition-enter-active="transition duration-[120ms] ease-out-quart motion-reduce:transition-none"
+                       data-transition-enter-from="opacity-0 scale-[0.98]"
+                       data-transition-enter-to="opacity-100 scale-100"
+                       data-transition-leave-active="transition duration-75 ease-out-quart motion-reduce:transition-none"
+                       data-transition-leave-from="opacity-100 scale-100"
+                       data-transition-leave-to="opacity-0 scale-[0.98]"
+                       class="hidden absolute right-0 top-full z-10 mt-1 w-40 origin-top-right rounded-lg surface p-1 shadow-lg inset-ring inset-ring-neutral-950/10 dark:shadow-none dark:inset-ring-white/10">
+                    <button type="button" role="menuitem" data-action="dialog#open dropdown#toggle"
+                            class="<%= menu_item_neutral %>">Rename</button>
+                    <%= button_to "Delete", project_path(project), method: :delete, role: "menuitem",
+                          class: menu_item_danger,
+                          data: { turbo_confirm: "Delete #{project.name}? Every source, destination, connection, event, and attempt in it is permanently deleted." } %>
+                  </div>
+                </div>
+
+                <dialog data-dialog-target="dialog" aria-labelledby="rename-project-<%= project.id %>-heading"
+                        class="m-auto w-full max-w-sm rounded-xl p-5 text-left elevated backdrop:bg-neutral-950/40 dark:backdrop:bg-neutral-950/60">
+                  <h2 id="rename-project-<%= project.id %>-heading" class="<%= ui(:subheading) %>">Rename project</h2>
+                  <%= form_with url: project_path(project), method: :patch, scope: :project, class: "mt-4" do |form| %>
+                    <%# Unique id per row: the rename field repeats down the table. %>
+                    <%= form.label :name, "Project name", for: "project-name-#{project.id}", class: ui(:label) %>
+                    <%= form.text_field :name, value: project.name, id: "project-name-#{project.id}",
+                          autofocus: true, class: "#{ui(:input)} mt-1.5" %>
+                    <div class="mt-5 flex justify-end gap-3">
+                      <button type="button" data-action="dialog#close" class="<%= ui(:button_secondary) %>">Cancel</button>
+                      <%= form.submit "Rename", class: ui(:button_primary) %>
+                    </div>
+                  <% end %>
+                </dialog>
+              </div>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
 </div>

@@ -1,0 +1,64 @@
+<% content_for :title, "Account settings" %>
+<%
+  user = current_user
+  row = "flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-3"
+  label = "text-sm text-neutral-500 dark:text-neutral-400"
+  value = "text-sm font-medium text-neutral-950 dark:text-white"
+%>
+<div class="mx-auto w-full max-w-2xl py-16">
+  <div class="mb-6 flex items-center justify-between gap-4">
+    <h1 class="<%= ui(:heading) %>">Account settings</h1>
+    <%= link_to "Security", security_account_path, class: "text-sm text-neutral-500 hover:text-neutral-950 dark:text-neutral-400 dark:hover:text-white" %>
+  </div>
+
+  <div class="flex items-center gap-4 rounded-xl elevated px-5 py-4">
+    <% if user.avatar_url.present? %>
+      <img src="<%= user.avatar_url %>" alt="" width="48" height="48"
+           class="size-12 shrink-0 rounded-full -outline-offset-1 outline-1 outline-black/10 dark:outline-white/10">
+    <% else %>
+      <span class="grid size-12 shrink-0 place-items-center rounded-full bg-neutral-950/5 text-base font-semibold text-neutral-600 dark:bg-white/10 dark:text-neutral-300" aria-hidden="true">
+        <%= (user.name.presence || user.github_login).first.upcase %>
+      </span>
+    <% end %>
+    <div class="min-w-0">
+      <p class="truncate text-base font-semibold text-neutral-950 dark:text-white"><%= user.name.presence || user.github_login %></p>
+      <p class="truncate text-sm text-neutral-500 dark:text-neutral-400"><%= user.email.presence || "No email on file" %></p>
+    </div>
+  </div>
+
+  <h2 class="mt-10 text-sm font-semibold text-neutral-950 dark:text-white">Profile</h2>
+  <dl class="mt-1 divide-y divide-neutral-950/5 dark:divide-white/5">
+    <div class="<%= row %>">
+      <dt class="<%= label %>">Name</dt>
+      <dd class="<%= value %>"><%= user.name.presence || "—" %></dd>
+    </div>
+    <div class="<%= row %>">
+      <dt class="<%= label %>">Email</dt>
+      <dd class="<%= value %>"><%= user.email.presence || "—" %></dd>
+    </div>
+    <div class="<%= row %>">
+      <dt class="<%= label %>">GitHub</dt>
+      <dd class="<%= value %>">
+        <%= link_to "@#{user.github_login}", "https://github.com/#{user.github_login}",
+              class: "text-oxblood-700 hover:text-oxblood-900 dark:text-oxblood-300 dark:hover:text-oxblood-200" %>
+      </dd>
+    </div>
+    <div class="<%= row %>">
+      <dt class="<%= label %>">Joined</dt>
+      <dd class="<%= value %>"><%= timestamp_tag(user.created_at) %></dd>
+    </div>
+  </dl>
+  <p class="mt-2 text-xs text-neutral-500 dark:text-neutral-400">
+    Your name, email, and picture come from GitHub and refresh every time you sign in. Edit them there.
+  </p>
+
+  <h2 class="mt-10 text-sm font-semibold text-neutral-950 dark:text-white">Organizations</h2>
+  <ul role="list" class="mt-1 divide-y divide-neutral-950/5 dark:divide-white/5">
+    <% @memberships.each do |membership| %>
+      <li class="flex items-center justify-between gap-4 py-3">
+        <span class="min-w-0 truncate text-sm font-medium text-neutral-950 dark:text-white"><%= membership.organization.name %></span>
+        <span class="shrink-0 text-sm text-neutral-500 dark:text-neutral-400"><%= membership.role.capitalize %></span>
+      </li>
+    <% end %>
+  </ul>
+</div>

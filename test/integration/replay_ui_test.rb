@@ -46,13 +46,19 @@ class ReplayUiTest < ActionDispatch::IntegrationTest
   test "the events list shows the replay control with the project's connections" do
     sign_in!
     source, connection = build_connection!(current_project, name: "alpha")
-    make_event!(source, connection)
+    event = make_event!(source, connection)
 
     get events_path
     assert_response :ok
-    assert_match "Replay filtered events to", response.body
+    assert_match "Replay selected events to", response.body
     assert_match "S-alpha → D-alpha", response.body
     assert_match bulk_replay_events_path, response.body
+    # The selection column is what feeds the bulk actions.
+    assert_match %(name="event_ids[]" value="#{event.id}"), response.body
+    # The bar floats over the page, but it has to stay inside the form for the
+    # row checkboxes to be its payload.
+    assert_select "form[action=?] [data-selection-target=bar] button[type=submit]", bulk_replay_events_path
+    assert_select "form[action=?] input[name=?]", bulk_replay_events_path, "event_ids[]"
   end
 
   test "bulk replay enqueues the filtered set and redirects with a count" do
@@ -77,6 +83,59 @@ class ReplayUiTest < ActionDispatch::IntegrationTest
     assert_match "Replaying 2 events.", response.body
   end
 
+  test "bulk replay with event_ids only touches the selected events" do
+    sign_in!
+    source, connection = build_connection!(current_project)
+    picked  = make_event!(source, connection)
+    ignored = make_event!(source, connection)
+
+    assert_enqueued_jobs(1, only: DeliverEventJob) do
+      post bulk_replay_events_path, params: { connection_id: connection.id, event_ids: [ picked.id ] }
+    end
+
+    assert_equal 1, Attempt.where(event: picked, replay: true).count
+    assert_equal 0, Attempt.where(event: ignored, replay: true).count
+    follow_redirect!
+    assert_match "Replaying 1 event.", response.body
+  end
+
+  test "event_ids cannot reach another project's events" do
+    other_source, other_connection = build_connection!(create_test_project!)
+    outsider = make_event!(other_source, other_connection)
+
+    sign_in!
+    source, connection = build_connection!(current_project)
+    assert_no_enqueued_jobs do
+      post bulk_replay_events_path, params: { connection_id: connection.id, event_ids: [ outsider.id ] }
+    end
+  end
+
+  test "all_filtered replays everything the filters match, not just the ticked rows" do
+    sign_in!
+    source, connection = build_connection!(current_project)
+    picked = make_event!(source, connection)
+    make_event!(source, connection)
+
+    assert_enqueued_jobs(2, only: DeliverEventJob) do
+      post bulk_replay_events_path,
+           params: { connection_id: connection.id, event_ids: [ picked.id ], all_filtered: "1" }
+    end
+  end
+
+  test "bulk retry with event_ids only retries the selected events" do
+    sign_in!
+    source, connection = build_connection!(current_project)
+    picked  = make_event!(source, connection, status: :failed)
+    ignored = make_event!(source, connection, status: :failed)
+
+    assert_enqueued_jobs(1, only: DeliverEventJob) do
+      post bulk_retry_events_path, params: { event_ids: [ picked.id ] }
+    end
+
+    assert Attempt.where(event: picked, connection: connection).order(:attempt_number).last.pending?
+    assert_not Attempt.where(event: ignored, connection: connection).order(:attempt_number).last.pending?
+  end
+
   test "a replayed attempt renders the replay pill on the event page" do
     sign_in!
     source, connection = build_connection!(current_project)
@@ -99,13 +158,13 @@ class ReplayUiTest < ActionDispatch::IntegrationTest
 
     get events_path
     assert_response :ok
-    assert_no_match "Replay filtered events to", response.body
+    assert_no_match "Replay selected events to", response.body
   end
 
   test "unauthenticated replay redirects to login" do
     assert_no_enqueued_jobs do
       post bulk_replay_events_path, params: { connection_id: 1 }
     end
-    assert_redirected_to login_path
+    assert_redirected_to sign_in_path
   end
 end

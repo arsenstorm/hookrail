@@ -11,12 +11,13 @@ class BulkReplaysController < ApplicationController
 
     unless connection.status_active?
       return redirect_to events_path(@filter_params),
-        alert: "That connection is #{connection.status} — resume it before replaying."
+        alert: "That connection is #{connection.status}. Resume it before replaying."
     end
 
-    in_flight = Attempt.in_flight_event_ids(filtered_events, connection)
-    enqueued = 0
-    filtered_events.find_each do |event|
+    events    = selected_events
+    in_flight = Attempt.in_flight_event_ids(events, connection)
+    enqueued  = 0
+    events.find_each do |event|
       next if in_flight.include?(event.id)
       next unless connection.routes?(event)
 

@@ -1,0 +1,18 @@
+<%# Empty state inside a table, so the header row stays put and the page doesn't
+    reshape when the first row arrives. Locals: colspan, title, body; optional
+    cta_label + cta_path, and `gated` (default true) for whether the CTA is an
+    editor-only action. A navigation link — "View sources", "Clear filters" —
+    passes gated: false, since a read-only member can follow it just fine. %>
+<tr>
+  <td colspan="<%= colspan %>" class="px-0 py-12 text-center">
+    <p class="<%= ui(:subheading) %>"><%= title %></p>
+    <p class="mx-auto mt-1 max-w-sm <%= ui(:hint) %>"><%= body %></p>
+    <% if local_assigns[:cta_label].present? %>
+      <% if !local_assigns.fetch(:gated, true) || can_edit? %>
+        <%= link_to cta_label, cta_path, class: "#{ui(:button_secondary)} mt-4" %>
+      <% else %>
+        <p class="mt-4 <%= ui(:hint) %>">Ask a project editor to add one.</p>
+      <% end %>
+    <% end %>
+  </td>
+</tr>

@@ -45,9 +45,52 @@ class SourceTest < ActiveSupport::TestCase
   end
 
   test "unknown provider is invalid" do
-    source = Source.new(name: "Test", project: create_test_project!, verification: { provider: "github", secret: "x" })
+    source = Source.new(name: "Test", project: create_test_project!, verification: { provider: "acme", secret: "x" })
     assert_not source.valid?
     assert_includes source.errors[:verification_provider], "is not included in the list"
+  end
+
+  test "github preset fills in the generic verification fields" do
+    source = Source.create!(name: "Test", project: create_test_project!, verification: { provider: "github", secret: "ghs_x" })
+    assert_equal "X-Hub-Signature-256", source.verification_header
+    assert_equal "value", source.verification_header_format
+    assert_equal "sha256=", source.verification_signature_prefix
+    assert_equal "{body}", source.verification_payload_template
+    assert_equal "sha256", source.verification_algorithm
+    assert_equal "hex", source.verification_encoding
+    assert_nil source.verification_tolerance_seconds
+  end
+
+  test "shopify preset fills in the generic verification fields" do
+    source = Source.create!(name: "Test", project: create_test_project!, verification: { provider: "shopify", secret: "shpss_x" })
+    assert_equal "X-Shopify-Hmac-Sha256", source.verification_header
+    assert_equal "value", source.verification_header_format
+    assert_equal "{body}", source.verification_payload_template
+    assert_equal "sha256", source.verification_algorithm
+    assert_equal "base64", source.verification_encoding
+    assert_nil source.verification_signature_prefix
+  end
+
+  test "slack preset fills in the generic verification fields" do
+    source = Source.create!(name: "Test", project: create_test_project!, verification: { provider: "slack", secret: "slack_x" })
+    assert_equal "X-Slack-Signature", source.verification_header
+    assert_equal "value", source.verification_header_format
+    assert_equal "v0=", source.verification_signature_prefix
+    assert_equal "X-Slack-Request-Timestamp", source.verification_timestamp_header
+    assert_equal "v0:{timestamp}:{body}", source.verification_payload_template
+    assert_equal "sha256", source.verification_algorithm
+    assert_equal "hex", source.verification_encoding
+    assert_equal 300, source.verification_tolerance_seconds
+  end
+
+  test "switching provider clears the previous preset's fields" do
+    source = Source.create!(name: "Test", project: create_test_project!, verification: { provider: "stripe", secret: "whsec_x" })
+    source.verification_provider = "github"
+    source.save!
+    assert_nil source.verification_tolerance_seconds
+    assert_nil source.verification_timestamp_key
+    assert_nil source.verification_signature_key
+    assert_equal "whsec_x", source.verification_secret
   end
 
   test "clearing the provider keeps the previously written generic fields" do

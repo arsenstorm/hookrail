@@ -1,93 +1,119 @@
-<% content_for :title, "API keys" %>
-<div class="w-full max-w-4xl mx-auto py-16">
-  <div class="flex items-center justify-between mb-6">
-    <h1 class="text-2xl font-semibold">API keys</h1>
-    <%= link_to "Dashboard", root_path, class: "text-sm text-gray-500 hover:text-gray-700" %>
+<% content_for :title, "Organization settings · API keys" %>
+<div>
+  <div data-controller="dialog">
+    <div class="flex flex-wrap items-center justify-between gap-4">
+      <h1 class="<%= ui(:heading) %>">API keys</h1>
+      <button type="button" data-action="dialog#open" class="<%= ui(:button_primary) %>">Create key</button>
+    </div>
+
+    <dialog data-dialog-target="dialog" aria-labelledby="new-api-key-heading"
+            class="m-auto w-full max-w-sm rounded-xl p-5 elevated backdrop:bg-neutral-950/40 dark:backdrop:bg-neutral-950/60">
+      <h2 id="new-api-key-heading" class="<%= ui(:subheading) %>">Create API key</h2>
+      <%= form_with url: api_keys_path, scope: :api_key, class: "mt-4" do |f| %>
+        <%= f.label :name, "Key name", class: ui(:label) %>
+        <%= f.text_field :name, placeholder: "CI deploy", autofocus: true, class: "#{ui(:input)} mt-1.5" %>
+        <p class="mt-1.5 <%= ui(:hint) %>">Names are for you. They show up in this list and nowhere else.</p>
+        <div class="mt-5 flex justify-end gap-3">
+          <button type="button" data-action="dialog#close" class="<%= ui(:button_secondary) %>">Cancel</button>
+          <%= f.submit "Create key", class: ui(:button_primary) %>
+        </div>
+      <% end %>
+    </dialog>
   </div>
 
+  <p class="mt-1 max-w-2xl <%= ui(:hint) %>">
+    Keys authenticate against the REST API at <code>/api/v1</code>. Send one as
+    <code>Authorization: Bearer &lt;key&gt;</code>.
+  </p>
+
   <% if flash[:new_api_key] %>
-    <div class="mb-6 rounded-md border border-amber-300 bg-amber-50 p-4">
-      <h2 class="text-sm font-semibold text-amber-900">Copy this key now — it will not be shown again</h2>
-      <div class="mt-2 select-all break-all rounded-md border border-amber-200 bg-white px-3 py-2 font-mono text-sm">
+    <div class="mt-6 max-w-2xl rounded-xl bg-amber-50 p-4 inset-ring inset-ring-amber-600/20 dark:bg-amber-400/10 dark:inset-ring-amber-400/25">
+      <h2 class="text-sm font-semibold text-amber-900 dark:text-amber-300">Copy this key now. It will not be shown again.</h2>
+      <div class="mt-2 rounded-lg surface px-3 py-2 font-mono text-sm break-all select-all inset-ring inset-ring-amber-600/20 dark:inset-ring-amber-400/25">
         <%= flash[:new_api_key] %>
       </div>
-      <p class="mt-2 text-xs text-amber-800">
-        Only a digest is stored, so we can't show it to you again. Send it as
-        <code>Authorization: Bearer &lt;key&gt;</code>.
+      <p class="mt-2 text-sm text-amber-800 dark:text-amber-300/80">
+        Only a digest is stored, so we can't show it to you again.
       </p>
     </div>
   <% end %>
 
-  <%= form_with url: api_keys_path, scope: :api_key, class: "mb-8 flex items-center gap-2" do |f| %>
-    <%= f.text_field :name, placeholder: "Key name", class: "w-64 rounded-md border border-gray-300 px-3 py-2 text-sm" %>
-    <%= f.submit "Create key", class: "rounded-md bg-blue-600 text-white px-3 py-2 text-sm hover:bg-blue-700 cursor-pointer" %>
-  <% end %>
-
-  <% if @api_keys.empty? %>
-    <p class="text-gray-500">No API keys yet. Create one to authenticate against the REST API at <code>/api/v1</code>.</p>
-  <% else %>
-    <table class="w-full text-sm">
-      <thead class="text-left text-gray-500 border-b">
-        <tr>
-          <th class="py-2 font-medium">Name</th>
-          <th class="py-2 font-medium">Key</th>
-          <th class="py-2 font-medium">Created</th>
-          <th class="py-2 font-medium"></th>
-        </tr>
-      </thead>
-      <tbody>
-        <% @api_keys.each do |api_key| %>
-          <tr class="border-b hover:bg-gray-50 <%= "text-gray-400" unless api_key.active? %>">
-            <td class="py-2"><%= api_key.name %></td>
-            <td class="py-2 font-mono text-xs"><%= api_key.prefix %>…</td>
-            <td class="py-2"><%= api_key.created_at.strftime("%Y-%m-%d %H:%M") %></td>
-            <td class="py-2 text-right">
-              <% if api_key.active? %>
-                <%= button_to "Revoke", api_key_path(api_key), method: :delete,
-                      class: "text-red-600 hover:underline text-sm cursor-pointer", form: { class: "inline" },
-                      data: { turbo_confirm: "Revoke this key? Anything using it stops working immediately." } %>
-              <% else %>
-                <span class="text-xs">revoked <%= api_key.revoked_at.strftime("%Y-%m-%d") %></span>
-              <% end %>
-            </td>
+  <div class="mt-6 <%= ui(:scroller) %>">
+    <div class="<%= ui(:scroller_inner) %>">
+      <table class="w-full text-sm">
+        <thead class="<%= ui(:table_head) %>">
+          <tr>
+            <th class="<%= ui(:th) %> w-full pr-6">Name</th>
+            <th class="<%= ui(:th) %> w-px pr-6">Key</th>
+            <th class="<%= ui(:th) %> w-px pr-6">Created</th>
+            <th class="<%= ui(:th) %> w-px text-right"><span class="sr-only">Actions</span></th>
           </tr>
-        <% end %>
-      </tbody>
-    </table>
-  <% end %>
-
-  <div class="flex items-center justify-between mt-12 mb-6">
-    <h2 class="text-xl font-semibold">CLI tokens</h2>
+        </thead>
+        <tbody class="<%= ui(:table_body) %>">
+          <% if @api_keys.empty? %>
+            <%= render "shared/empty_row", colspan: 4, title: "No API keys yet",
+                  body: "Create a key to authenticate requests from your own scripts or CI." %>
+          <% else %>
+            <% @api_keys.each do |api_key| %>
+              <tr class="<%= "text-neutral-400 dark:text-neutral-500" unless api_key.active? %>">
+                <td class="<%= ui(:td) %> w-full pr-6 font-medium"><%= api_key.name %></td>
+                <td class="<%= ui(:td_muted) %> w-px pr-6 font-mono text-xs"><%= api_key.prefix %>…</td>
+                <td class="<%= ui(:td_muted) %> w-px pr-6"><%= timestamp_tag(api_key.created_at) %></td>
+                <td class="<%= ui(:td) %> w-px text-right">
+                  <% if api_key.active? %>
+                    <%= button_to "Revoke", api_key_path(api_key), method: :delete,
+                          class: ui(:button_danger), form: { class: "inline" },
+                          data: { turbo_confirm: "Revoke this key? Anything using it stops working immediately." } %>
+                  <% else %>
+                    <span class="<%= ui(:badge) %> <%= ui(:badge_neutral) %>">revoked <%= timestamp_tag(api_key.revoked_at) %></span>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
   </div>
 
-  <% if @cli_tokens.empty? %>
-    <p class="text-gray-500">No CLI tokens yet. Run <code>hookrail login</code> to authorize one.</p>
-  <% else %>
-    <table class="w-full text-sm">
-      <thead class="text-left text-gray-500 border-b">
-        <tr>
-          <th class="py-2 font-medium">Name</th>
-          <th class="py-2 font-medium">Token</th>
-          <th class="py-2 font-medium">User</th>
-          <th class="py-2 font-medium">Last used</th>
-          <th class="py-2 font-medium"></th>
-        </tr>
-      </thead>
-      <tbody>
-        <% @cli_tokens.each do |cli_token| %>
-          <tr class="border-b hover:bg-gray-50">
-            <td class="py-2"><%= cli_token.name %></td>
-            <td class="py-2 font-mono text-xs"><%= cli_token.prefix %>…</td>
-            <td class="py-2"><%= cli_token.user.github_login %></td>
-            <td class="py-2"><%= cli_token.last_used_at&.strftime("%Y-%m-%d %H:%M") || "never" %></td>
-            <td class="py-2 text-right">
-              <%= button_to "Revoke", cli_token_path(cli_token), method: :delete,
-                    class: "text-red-600 hover:underline text-sm cursor-pointer", form: { class: "inline" },
-                    data: { turbo_confirm: "Revoke this CLI token? Anything using it stops working immediately." } %>
-            </td>
-          </tr>
-        <% end %>
-      </tbody>
-    </table>
-  <% end %>
+  <section class="mt-10">
+    <h2 class="<%= ui(:subheading) %>">CLI tokens</h2>
+    <p class="mt-1 max-w-2xl <%= ui(:hint) %>">Issued by <code>hookrail login</code>, one per machine.</p>
+
+    <div class="mt-4 <%= ui(:scroller) %>">
+      <div class="<%= ui(:scroller_inner) %>">
+        <table class="w-full text-sm">
+          <thead class="<%= ui(:table_head) %>">
+            <tr>
+              <th class="<%= ui(:th) %> w-full pr-6">Name</th>
+              <th class="<%= ui(:th) %> w-px pr-6">Token</th>
+              <th class="<%= ui(:th) %> w-px pr-6">User</th>
+              <th class="<%= ui(:th) %> w-px pr-6">Last used</th>
+              <th class="<%= ui(:th) %> w-px text-right"><span class="sr-only">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody class="<%= ui(:table_body) %>">
+            <% if @cli_tokens.empty? %>
+              <%= render "shared/empty_row", colspan: 5, title: "No CLI tokens yet",
+                    body: "Running hookrail login on a machine issues one." %>
+            <% else %>
+              <% @cli_tokens.each do |cli_token| %>
+                <tr>
+                  <td class="<%= ui(:td) %> w-full pr-6 font-medium"><%= cli_token.name %></td>
+                  <td class="<%= ui(:td_muted) %> w-px pr-6 font-mono text-xs"><%= cli_token.prefix %>…</td>
+                  <td class="<%= ui(:td_muted) %> w-px pr-6"><%= cli_token.user.github_login %></td>
+                  <td class="<%= ui(:td_muted) %> w-px pr-6"><%= cli_token.last_used_at ? timestamp_tag(cli_token.last_used_at) : "never" %></td>
+                  <td class="<%= ui(:td) %> w-px text-right">
+                    <%= button_to "Revoke", cli_token_path(cli_token), method: :delete,
+                          class: ui(:button_danger), form: { class: "inline" },
+                          data: { turbo_confirm: "Revoke this CLI token? Anything using it stops working immediately." } %>
+                  </td>
+                </tr>
+              <% end %>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
 </div>

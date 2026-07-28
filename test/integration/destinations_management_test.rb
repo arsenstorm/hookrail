@@ -73,6 +73,67 @@ class DestinationsManagementTest < ActionDispatch::IntegrationTest
     assert_redirected_to destination_path(d)
   end
 
+  test "index shows the empty state when there are no destinations" do
+    sign_in!
+    get destinations_path
+    assert_response :ok
+    assert_match "No destinations yet", response.body
+    assert_match new_destination_path, response.body
+  end
+
+  test "index lists destinations in the table" do
+    sign_in!
+    d = current_project.destinations.create!(name: "API", url: "https://api.test/hook")
+    get destinations_path
+    assert_no_match "No destinations yet", response.body
+    assert_match "API", response.body
+    assert_match "https://api.test/hook", response.body
+    assert_match edit_destination_path(d), response.body
+    # Row height parity with the sources table, and the URL still truncates inside it.
+    assert_match "flex min-h-10 items-center", response.body
+    assert_match(/class="block max-w-xs min-w-0 truncate[^"]*"\s+title="https:\/\/api.test\/hook"/, response.body)
+  end
+
+  test "index badges a CLI destination instead of showing a URL" do
+    sign_in!
+    current_project.destinations.create!(name: "Laptop", kind: "cli")
+    get destinations_path
+    assert_match "Local CLI session", response.body
+  end
+
+  test "the auth fields reveal on the selected auth type" do
+    sign_in!
+    get new_destination_path
+    assert_match(/data-controller="reveal"/, response.body)
+    assert_match(/data-reveal-target="select"/, response.body)
+    assert_match(/data-action="reveal#update"/, response.body)
+    # Nothing selected yet, so both credential sections are hidden server-side.
+    assert_match(/data-reveal-name="bearer"[^>]*hidden/, response.body)
+    assert_match(/data-reveal-name="basic"[^>]*hidden/, response.body)
+  end
+
+  test "edit reveals only the configured auth type's fields" do
+    sign_in!
+    d = current_project.destinations.create!(name: "API", url: "https://api.test/hook",
+                                             auth: { "type" => "bearer", "token" => "t0ken" })
+    get edit_destination_path(d)
+    assert_no_match(/data-reveal-name="bearer"[^>]*hidden/, response.body)
+    assert_match(/data-reveal-name="basic"[^>]*hidden/, response.body)
+  end
+
+  test "advanced disclosure is collapsed until headers or a rate limit exist" do
+    sign_in!
+    plain = current_project.destinations.create!(name: "API", url: "https://api.test/hook")
+    get edit_destination_path(plain)
+    assert_match "Advanced", response.body
+    assert_no_match(/<details[^>]*\sopen/, response.body)
+
+    configured = current_project.destinations.create!(name: "API 2", url: "https://api2.test/hook",
+                                                      headers: { "X-Api-Key" => "abc" })
+    get edit_destination_path(configured)
+    assert_match(/<details class="group" open/, response.body)
+  end
+
   test "another project's destination is not found" do
     sign_in!
     other = create_test_project!.destinations.create!(name: "Theirs", url: "https://x.test")
@@ -84,6 +145,6 @@ class DestinationsManagementTest < ActionDispatch::IntegrationTest
 
   test "unauthenticated requests redirect to login" do
     get destinations_path
-    assert_redirected_to login_path
+    assert_redirected_to sign_in_path
   end
 end

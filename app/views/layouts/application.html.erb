@@ -1,37 +1,32 @@
 <!DOCTYPE html>
-<html>
+<html class="antialiased">
   <head>
-    <title><%= content_for(:title) || "Hookrail" %></title>
-    <meta name="viewport" content="width=device-width,initial-scale=1">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="application-name" content="Hookrail">
-    <meta name="mobile-web-app-capable" content="yes">
-    <%= csrf_meta_tags %>
-    <%= csp_meta_tag %>
-
-    <%= yield :head %>
-
-    <%# Enable PWA manifest for installable apps (make sure to enable in config/routes.rb too!) %>
-    <%#= tag.link rel: "manifest", href: pwa_manifest_path(format: :json) %>
-
-    <link rel="icon" href="/icon.png" type="image/png">
-    <link rel="icon" href="/icon.svg" type="image/svg+xml">
-    <link rel="apple-touch-icon" href="/icon.png">
-
-    <%# Includes all stylesheet files in app/assets/stylesheets %>
-    <%= stylesheet_link_tag :app, "data-turbo-track": "reload" %>
-    <%= javascript_importmap_tags %>
+    <%= render "layouts/head" %>
   </head>
 
-  <body>
-    <% if notice || alert %>
-      <div class="container mx-auto px-5 mt-4">
-        <% if notice %><p class="rounded-md bg-green-50 text-green-800 px-3 py-2 text-sm"><%= notice %></p><% end %>
-        <% if alert %><p class="rounded-md bg-red-50 text-red-800 px-3 py-2 text-sm"><%= alert %></p><% end %>
+  <%# Default text color lives here so bare elements (dd, h1 without a class)
+      inherit something readable in both modes instead of browser black. %>
+  <body class="canvas text-neutral-950 dark:text-white">
+    <% if current_user %>
+      <div class="min-h-dvh lg:flex">
+        <%= render settings_area? ? "layouts/settings_sidebar" : "layouts/sidebar" %>
+        <div class="min-w-0 flex-1">
+          <%= render "layouts/mobile_nav" %>
+          <main class="isolate mx-auto max-w-7xl px-5 py-10 lg:px-8 lg:py-12">
+            <%= render "layouts/flash" %>
+            <%= yield %>
+          </main>
+        </div>
       </div>
+    <% else %>
+      <%# Signed-out pages are single, self-contained cards, so the branch does
+          the centring rather than every page repeating it. %>
+      <main class="isolate mx-auto grid min-h-dvh max-w-7xl place-items-center px-5 py-10">
+        <div class="w-full max-w-sm">
+          <%= render "layouts/flash" %>
+          <%= yield %>
+        </div>
+      </main>
     <% end %>
-    <main class="container mx-auto mt-28 px-5 flex">
-      <%= yield %>
-    </main>
   </body>
 </html>

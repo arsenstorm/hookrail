@@ -3,8 +3,8 @@ A webhook for source <%= @source.name %> was rejected and quarantined.
 Reason: <%= @quarantined_webhook.reason %>
 Received: <%= @quarantined_webhook.received_at.utc.strftime("%Y-%m-%d %H:%M UTC") %>
 
-Two things look like this. Either someone sent a forged request, or the signing
-secret configured in Hookrail no longer matches the sender's and real traffic is
-being dropped. Check the secret before assuming forgery.
+Either someone sent a forged request, or the signing secret configured in
+Hookrail no longer matches the sender's and real traffic is being dropped.
+Check the secret before assuming forgery.
 
 <%= quarantined_webhooks_url %>

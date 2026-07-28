@@ -4,6 +4,6 @@ class ProjectSwitchesController < ApplicationController
   def create
     project = Current.membership.accessible_projects.find(params[:id])
     Current.membership.update!(current_project_id: project.id)
-    redirect_to root_path
+    redirect_to dashboard_path
   end
 end

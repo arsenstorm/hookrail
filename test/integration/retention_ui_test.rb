@@ -23,10 +23,10 @@ class RetentionUiTest < ActionDispatch::IntegrationTest
     User.find_by(github_uid: "12345").organization.reload
   end
 
-  test "dashboard links to the retention page" do
+  test "the organization settings nav links to the retention page" do
     sign_in!
 
-    get root_path
+    get members_path
     assert_response :ok
     assert_select "a[href=?]", retention_path
   end
@@ -38,6 +38,8 @@ class RetentionUiTest < ActionDispatch::IntegrationTest
     assert_response :ok
     assert_select "input[type=radio][name='organization[retention_days]']", count: 3
     assert_select "input[type=radio][value='30'][checked]"
+    # The selected state is CSS-only (has-checked:), so the radio has to stay in the DOM.
+    assert_select "label.has-checked\\:bg-neutral-950\\/\\[0\\.03\\]", count: 3
   end
 
   test "saving a new window persists it" do

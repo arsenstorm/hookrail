@@ -34,6 +34,26 @@ class ApiKeysUiTest < ActionDispatch::IntegrationTest
     assert_no_match raw, response.body
   end
 
+  test "both empty tables keep their headers and put the empty state in a row" do
+    sign_in!
+
+    get api_keys_path
+    assert_response :ok
+    assert_select "table thead th", text: "Key"
+    assert_select "table tbody td[colspan=4]", text: /No API keys yet/
+    assert_select "table thead th", text: "Last used"
+    assert_select "table tbody td[colspan=5]", text: /No CLI tokens yet/
+  end
+
+  test "index opens key creation from a dialog trigger" do
+    sign_in!
+
+    get api_keys_path
+    assert_response :ok
+    assert_select "button[data-action=?]", "dialog#open", text: "Create key"
+    assert_select "dialog form[action=?]", api_keys_path
+  end
+
   test "create shows the raw key once and never again" do
     sign_in!
 
@@ -75,6 +95,6 @@ class ApiKeysUiTest < ActionDispatch::IntegrationTest
 
   test "unauthenticated requests redirect to login" do
     get api_keys_path
-    assert_redirected_to login_path
+    assert_redirected_to sign_in_path
   end
 end

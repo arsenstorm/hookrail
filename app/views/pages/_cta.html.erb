@@ -1,0 +1,5 @@
+<%# The page's one primary action. Label and target both follow the session;
+    `variant` restyles it for the brand band, where oxblood-on-oxblood dies. %>
+<%= link_to current_user ? "Open dashboard" : "Get started",
+      current_user ? dashboard_path : sign_in_path,
+      class: "#{local_assigns.fetch(:variant, "#{ui(:button_primary)} focus-visible:outline-neutral-950 dark:focus-visible:outline-white")} px-4 py-2 text-sm/6 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2" %>

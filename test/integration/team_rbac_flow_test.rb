@@ -79,27 +79,27 @@ class TeamRbacFlowTest < ActionDispatch::IntegrationTest
     assert_response :ok
     assert_match source.name, response.body
 
-    get metrics_path
+    get dashboard_path
     assert_response :ok
 
     post event_retries_path(event), params: { connection_id: connection.id }
     assert_response :see_other
-    assert_redirected_to root_path
+    assert_redirected_to dashboard_path
 
     assert_no_difference "Source.count" do
       post sources_path, params: { source: { name: "New Source" } }
     end
-    assert_redirected_to root_path
+    assert_redirected_to dashboard_path
 
     delete destination_path(destination)
-    assert_redirected_to root_path
+    assert_redirected_to dashboard_path
     assert Destination.exists?(destination.id)
 
     get api_keys_path
-    assert_redirected_to root_path
+    assert_redirected_to dashboard_path
 
     get retention_path
-    assert_redirected_to root_path
+    assert_redirected_to dashboard_path
   end
 
   test "editors mutate within the project" do
@@ -140,13 +140,13 @@ class TeamRbacFlowTest < ActionDispatch::IntegrationTest
 
     sign_in_as!(erin)
 
-    get root_path
+    get dashboard_path
     assert_response :ok
     assert_no_match source.name, response.body
     assert_no_match alice_project.name, response.body
 
     get events_path
-    assert_redirected_to root_path
+    assert_redirected_to dashboard_path
   end
 
   test "alerts reach every owner and admin" do
@@ -184,7 +184,7 @@ class TeamRbacFlowTest < ActionDispatch::IntegrationTest
 
     sign_in_as!(solo)
 
-    get root_path
+    get dashboard_path
     assert_response :ok
 
     get events_path
@@ -214,7 +214,7 @@ class TeamRbacFlowTest < ActionDispatch::IntegrationTest
     )
 
     get invite_path(invitation.token)
-    assert_redirected_to login_path
+    assert_redirected_to sign_in_path
 
     newbie = sign_in_new!("newbie", "newbie@example.com")
     membership = alice.organization.memberships.find_by(user: newbie)
@@ -230,7 +230,7 @@ class TeamRbacFlowTest < ActionDispatch::IntegrationTest
     other = alice.organization.invitations.create!(email: "someoneelse@example.com", role: "member")
     reset!
     get invite_path(other.token)
-    assert_redirected_to login_path
+    assert_redirected_to sign_in_path
 
     wrong = sign_in_new!("wrong", "wrong@example.com")
     assert_nil alice.organization.memberships.find_by(user: wrong)
@@ -243,7 +243,7 @@ class TeamRbacFlowTest < ActionDispatch::IntegrationTest
     invitation.update_column(:created_at, 8.days.ago)
 
     get invite_path(invitation.token)
-    assert_redirected_to login_path
+    assert_redirected_to sign_in_path
 
     late = sign_in_new!("late", "late@example.com")
     assert_nil alice.organization.memberships.find_by(user: late)

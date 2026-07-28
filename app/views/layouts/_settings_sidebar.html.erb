@@ -1,0 +1,79 @@
+<%
+  other_org_memberships = Current.user.memberships.includes(:organization)
+                                 .reject { |m| m.organization_id == Current.organization&.id }
+  switch_item = "flex w-full cursor-pointer rounded-sm px-2.5 py-1.5 text-left text-sm font-medium text-neutral-600 hover:bg-neutral-950/5 hover:text-neutral-950 dark:text-neutral-400 dark:hover:bg-white/5 dark:hover:text-white"
+%>
+<%# Replaces the main sidebar on /org pages, mirroring its anatomy: logo,
+    switcher, nav, footer. The switcher here is org-only. %>
+<aside class="sticky top-0 h-dvh w-64 shrink-0 flex-col overflow-y-auto border-r border-neutral-950/10 surface px-4 pt-6 pb-4 max-lg:hidden lg:flex dark:border-white/10">
+  <%= link_to dashboard_path, "aria-label": "Homepage", class: "flex items-center gap-2 px-2.5" do %>
+    <%= render "shared/logo_mark", class: "size-6 shrink-0 text-oxblood-700 dark:text-oxblood-500" %>
+    <span class="text-sm font-semibold text-neutral-950 dark:text-white">Hookrail</span>
+  <% end %>
+
+  <div class="relative mt-5" data-controller="dropdown"
+       data-action="click@window->dropdown#hide keydown@window->dropdown#escape">
+    <button type="button" aria-haspopup="menu" aria-expanded="false" aria-label="Switch organization"
+            data-dropdown-target="trigger" data-action="dropdown#toggle"
+            class="flex w-full cursor-pointer items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-left inset-ring inset-ring-neutral-950/10 hover:bg-neutral-950/5 aria-expanded:bg-neutral-950/5 dark:inset-ring-white/10 dark:hover:bg-white/5 dark:aria-expanded:bg-white/5">
+      <span class="block min-w-0 truncate text-sm font-medium text-neutral-950 dark:text-white"><%= Current.organization&.name %></span>
+      <svg viewBox="0 0 16 16" class="size-4 shrink-0 fill-neutral-400" aria-hidden="true">
+        <path fill-rule="evenodd" d="M5.22 10.22a.75.75 0 0 1 1.06 0L8 11.94l1.72-1.72a.75.75 0 1 1 1.06 1.06l-2.25 2.25a.75.75 0 0 1-1.06 0l-2.25-2.25a.75.75 0 0 1 0-1.06Zm5.56-4.44a.75.75 0 0 1-1.06 0L8 4.06 6.28 5.78a.75.75 0 0 1-1.06-1.06l2.25-2.25a.75.75 0 0 1 1.06 0l2.25 2.25a.75.75 0 0 1 0 1.06Z" clip-rule="evenodd"/>
+      </svg>
+    </button>
+    <div role="menu" data-dropdown-target="menu"
+         data-transition-enter-active="transition duration-[120ms] ease-out-quart motion-reduce:transition-none"
+         data-transition-enter-from="opacity-0 scale-[0.98]"
+         data-transition-enter-to="opacity-100 scale-100"
+         data-transition-leave-active="transition duration-75 ease-out-quart motion-reduce:transition-none"
+         data-transition-leave-from="opacity-100 scale-100"
+         data-transition-leave-to="opacity-0 scale-[0.98]"
+         class="hidden absolute z-10 mt-1 w-full origin-top space-y-0.5 rounded-lg surface p-1 shadow-lg inset-ring inset-ring-neutral-950/10 dark:shadow-none dark:inset-ring-white/10">
+      <span class="flex rounded-sm bg-neutral-950/5 px-2.5 py-1.5 text-sm font-medium text-neutral-950 dark:bg-white/5 dark:text-white"><%= Current.organization&.name %></span>
+      <% other_org_memberships.each do |m| %>
+        <%= button_to m.organization.name, switch_org_path(m.organization_id), class: switch_item %>
+      <% end %>
+      <div class="mx-2.5 border-t border-neutral-950/5 dark:border-white/5"></div>
+      <%= link_to new_organization_path, role: "menuitem", class: "#{switch_item} items-center gap-1.5" do %>
+        <svg viewBox="0 0 16 16" class="size-4 shrink-0 fill-current" aria-hidden="true">
+          <path d="M8 3.25a.75.75 0 0 1 .75.75v2.75h2.75a.75.75 0 0 1 0 1.5H8.75V11a.75.75 0 0 1-1.5 0V8.25H4.5a.75.75 0 0 1 0-1.5h2.75V4A.75.75 0 0 1 8 3.25Z"/>
+        </svg>
+        New organization
+      <% end %>
+    </div>
+  </div>
+
+  <nav class="mt-6 flex-1 space-y-6">
+    <% [ [ "Monitor", settings_monitor_items ], [ "Organization settings", settings_nav_items ] ].each do |label, items| %>
+      <div>
+        <p class="px-2.5 text-xs font-medium text-neutral-500 dark:text-neutral-400"><%= label %></p>
+        <ul role="list" class="mt-1.5 space-y-0.5">
+          <%# Hardcoded rather than in settings_monitor_items: dashboard_path is
+              /app, so the loop's start_with? aria-current would light it on
+              every page. nav_item_classes has the exact-match case for it. %>
+          <% if label == "Monitor" %>
+            <li>
+              <%= link_to dashboard_path, class: nav_item_classes(dashboard_path),
+                    "aria-current": ("page" if request.path == dashboard_path) do %>
+                <%= nav_icon(:dashboard) %>Dashboard
+              <% end %>
+            </li>
+          <% end %>
+          <% items.each do |name, path, icon| %>
+            <li>
+              <%= link_to path, class: nav_item_classes(path),
+                    "aria-current": ("page" if request.path.start_with?(path)) do %>
+                <%= nav_icon(icon) %><%= name %>
+              <% end %>
+            </li>
+          <% end %>
+        </ul>
+      </div>
+    <% end %>
+  </nav>
+
+  <%# Matches the main sidebar footer: see the note there on mt-2.5/pt-2. %>
+  <div class="mt-2.5 border-t border-neutral-950/10 pt-2 dark:border-white/10">
+    <%= render "shared/user_menu" %>
+  </div>
+</aside>

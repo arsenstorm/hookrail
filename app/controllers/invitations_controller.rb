@@ -8,7 +8,7 @@ class InvitationsController < ApplicationController
       invitation.grants = [ { "project_id" => params[:invitation][:project_id].to_i, "level" => params[:invitation][:level] } ]
     end
     if invitation.save
-      redirect_to members_path, notice: "Invitation created — copy the link below and send it over."
+      redirect_to members_path, notice: "Invitation created. Copy the link from the pending list and send it over."
     else
       redirect_to members_path, alert: invitation.errors.full_messages.to_sentence
     end

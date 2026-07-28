@@ -31,6 +31,24 @@ class IssuesUiTest < ActionDispatch::IntegrationTest
     project.connections.create!(source: source, destination: destination)
   end
 
+  test "an empty index keeps the table header and puts the empty state in a row" do
+    owner = make_user!("issueempty")
+    sign_in_as!(owner)
+
+    get issues_path
+    assert_response :ok
+    assert_select "table thead th", text: "Subject"
+    assert_select "table tbody td[colspan=6]", text: /No open issues/
+    assert_select "table tbody a", text: "View unresolved", count: 0
+
+    # Filtering to a state that happens to be empty is its own message, plus a
+    # way back to the default view.
+    get issues_path(status: "resolved")
+    assert_response :ok
+    assert_select "table tbody td[colspan=6]", text: /No resolved issues/
+    assert_select "table tbody a[href=?]", issues_path, text: "View unresolved"
+  end
+
   test "index defaults to unresolved newest first, and status filters partition correctly" do
     owner = make_user!("issueowner1")
     project = owner.organization.projects.first
@@ -54,6 +72,12 @@ class IssuesUiTest < ActionDispatch::IntegrationTest
     assert_response :ok
     assert_match "Webhook quarantined", response.body
     assert_no_match "Delivery failure", response.body
+
+    # No pill links here anymore, but old bookmarks still filter.
+    get issues_path(status: "open")
+    assert_response :ok
+    assert_match "Delivery failure", response.body
+    assert_no_match "Webhook quarantined", response.body
 
     get issues_path(status: "all")
     assert_response :ok
@@ -122,7 +146,7 @@ class IssuesUiTest < ActionDispatch::IntegrationTest
     assert_response :ok
 
     patch acknowledge_issue_path(issue)
-    assert_redirected_to root_path
+    assert_redirected_to dashboard_path
     follow_redirect!
     assert_match "You don&#39;t have permission to do that.", response.body
     assert issue.reload.status_open?
@@ -159,8 +183,8 @@ class IssuesUiTest < ActionDispatch::IntegrationTest
 
     sign_in_as!(owner)
 
-    get root_path
+    get dashboard_path
     assert_response :ok
-    assert_match "Issues →", response.body
+    assert_select "a[href=?]", issues_path, text: "Issues"
   end
 end

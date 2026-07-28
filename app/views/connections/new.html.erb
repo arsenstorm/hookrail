@@ -1,36 +1,40 @@
 <% content_for :title, "New connection" %>
-<div class="w-full max-w-4xl mx-auto py-16">
-  <div class="flex items-center justify-between mb-6">
-    <h1 class="text-2xl font-semibold">New connection</h1>
-    <%= link_to "Dashboard", root_path, class: "text-sm text-gray-500 hover:text-gray-700" %>
+<div>
+  <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
+    <h1 class="<%= ui(:heading) %>">New connection</h1>
   </div>
 
   <% if @sources.empty? || @destinations.empty? %>
-    <p class="text-gray-600 text-sm mb-4">You need at least one source and one destination first.</p>
-    <div class="flex gap-4">
-      <%= link_to "Create a source →", new_source_path, class: "text-blue-600 hover:underline" %>
-      <%= link_to "Create a destination →", new_destination_path, class: "text-blue-600 hover:underline" %>
+    <%# A blocked form, not an empty list — no table to sit inside, and two CTAs,
+        so this is a card of its own rather than shared/empty_row. %>
+    <div class="rounded-xl px-6 py-12 text-center inset-ring inset-ring-neutral-950/10 dark:inset-ring-white/10">
+      <h2 class="<%= ui(:subheading) %>">Nothing to connect yet</h2>
+      <p class="mx-auto mt-1 max-w-sm <%= ui(:hint) %>">You need at least one source and one destination first.</p>
+      <div class="mt-5 flex flex-wrap items-center justify-center gap-4">
+        <%= link_to "Create a source →", new_source_path, class: ui(:link) %>
+        <%= link_to "Create a destination →", new_destination_path, class: ui(:link) %>
+      </div>
     </div>
   <% else %>
     <%= form_with model: @connection, class: "space-y-4 max-w-md" do |f| %>
       <% if @connection.errors.any? %>
-        <div class="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-800">
+        <div class="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-800 inset-ring inset-ring-red-600/20 dark:bg-red-950/40 dark:text-red-200 dark:inset-ring-red-400/25">
           <ul class="list-disc list-inside">
             <% @connection.errors.full_messages.each do |m| %><li><%= m %></li><% end %>
           </ul>
         </div>
       <% end %>
       <div>
-        <%= f.label :source_id, "Source", class: "block text-sm font-medium text-gray-700 mb-1" %>
-        <%= f.collection_select :source_id, @sources, :id, :name, {}, class: "w-full rounded-md border border-gray-300 px-3 py-2 text-sm" %>
+        <%= f.label :source_id, "Source", class: "#{ui(:label)} mb-1" %>
+        <%= f.collection_select :source_id, @sources, :id, :name, {}, class: "#{ui(:select)} w-full" %>
       </div>
       <div>
-        <%= f.label :destination_id, "Destination", class: "block text-sm font-medium text-gray-700 mb-1" %>
-        <%= f.collection_select :destination_id, @destinations, :id, :name, {}, class: "w-full rounded-md border border-gray-300 px-3 py-2 text-sm" %>
+        <%= f.label :destination_id, "Destination", class: "#{ui(:label)} mb-1" %>
+        <%= f.collection_select :destination_id, @destinations, :id, :name, {}, class: "#{ui(:select)} w-full" %>
       </div>
-      <%= f.submit "Create connection", class: "rounded-md bg-blue-600 text-white px-3 py-1.5 text-sm hover:bg-blue-700" %>
+      <%= f.submit "Create connection", class: ui(:button_primary) %>
     <% end %>
   <% end %>
 
-  <%= link_to "← Connections", connections_path, class: "text-sm text-gray-500 hover:text-gray-700 mt-4 inline-block" %>
+  <%= link_to "← Connections", connections_path, class: "#{ui(:muted_link)} mt-4 inline-block" %>
 </div>

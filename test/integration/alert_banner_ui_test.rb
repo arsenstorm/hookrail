@@ -32,31 +32,63 @@ class AlertBannerUiTest < ActionDispatch::IntegrationTest
 
   test "dashboard shows the banner for an unhealthy connection" do
     sign_in!
-    connect!(current_project, unhealthy_since: 2.hours.ago, consecutive_failures: 5)
+    since = 2.hours.ago
+    connect!(current_project, unhealthy_since: since, consecutive_failures: 5)
 
-    get root_path
+    get dashboard_path
     assert_response :ok
     assert_match "GH", response.body
     assert_match "API", response.body
-    assert_match "failing for about 2 hours", response.body
+    assert_match "Failing since", response.body
+    assert_select "time[datetime=?]", since.utc.iso8601, text: "2h ago"
   end
 
   test "connections index shows the banner and the row indicator" do
     sign_in!
-    connect!(current_project, unhealthy_since: 2.hours.ago, consecutive_failures: 5)
+    since = 2.hours.ago
+    connect!(current_project, unhealthy_since: since, consecutive_failures: 5)
 
     get connections_path
     assert_response :ok
     assert_match "failing delivery", response.body
     assert_match "unhealthy", response.body
-    assert_match "failing for about 2 hours", response.body
+    assert_match "failing since", response.body
+    assert_select "time[datetime=?]", since.utc.iso8601, text: "2h ago"
+  end
+
+  test "a disabled connection stays out of the banner on both pages" do
+    sign_in!
+    connect!(current_project, status: "disabled", unhealthy_since: 2.hours.ago, consecutive_failures: 5)
+
+    # Not delivering, so its last health is stale — the banner is about what is
+    # failing right now.
+    get connections_path
+    assert_response :ok
+    assert_no_match "failing delivery", response.body
+
+    get dashboard_path
+    assert_response :ok
+    assert_no_match "failing delivery", response.body
+  end
+
+  test "a paused connection still shows in the banner — it can resume" do
+    sign_in!
+    connect!(current_project, status: "paused", unhealthy_since: 2.hours.ago, consecutive_failures: 5)
+
+    get connections_path
+    assert_response :ok
+    assert_match "failing delivery", response.body
+
+    get dashboard_path
+    assert_response :ok
+    assert_match "Failing since", response.body
   end
 
   test "dashboard shows no banner when every connection is healthy" do
     sign_in!
     connect!(current_project)
 
-    get root_path
+    get dashboard_path
     assert_response :ok
     assert_no_match "failing delivery", response.body
   end

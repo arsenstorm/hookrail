@@ -22,6 +22,6 @@ module Authorization
   end
 
   def deny
-    redirect_to root_path, alert: "You don't have permission to do that.", status: :see_other
+    redirect_to dashboard_path, alert: "You don't have permission to do that.", status: :see_other
   end
 end

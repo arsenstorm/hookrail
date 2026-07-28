@@ -1,67 +1,84 @@
 <% content_for :title, "Issues" %>
-<div class="w-full max-w-4xl mx-auto py-16">
-  <div class="flex items-center justify-between mb-6">
-    <h1 class="text-2xl font-semibold">Issues</h1>
-    <%= link_to "Dashboard", root_path, class: "text-sm text-gray-500 hover:text-gray-700" %>
+<div>
+  <h1 class="<%= ui(:heading) %>">Issues</h1>
+
+  <%
+    # open/acknowledged stay valid params (old links keep working); the row badge
+    # already tells them apart, so they get no pill of their own.
+    filters = [ [ "All", "all" ], [ "Unresolved", nil ], [ "Resolved", "resolved" ] ]
+    # Weight stays constant across states so switching tabs never reflows the row.
+    pill = "rounded-md px-2.5 py-1.5 text-sm font-medium"
+    tones = { "open" => :badge_red, "acknowledged" => :badge_amber, "resolved" => :badge_neutral }
+  %>
+  <div class="mt-6 -ml-1 flex flex-wrap gap-1">
+    <% filters.each do |label, status| %>
+      <%= link_to label, status ? issues_path(status: status) : issues_path,
+            "aria-current": ("page" if @status == status),
+            class: @status == status ?
+              "#{pill} bg-neutral-950/5 text-neutral-950 dark:bg-white/5 dark:text-white" :
+              "#{pill} text-neutral-500 hover:bg-neutral-950/5 hover:text-neutral-950 dark:text-neutral-400 dark:hover:bg-white/5 dark:hover:text-white" %>
+    <% end %>
   </div>
 
-  <div class="flex gap-4 mb-4">
-    <%= link_to "Unresolved", issues_path,
-          class: "text-sm #{@status.nil? ? "font-medium text-gray-900" : "text-gray-500 hover:text-gray-700"}" %>
-    <%= link_to "Open", issues_path(status: "open"),
-          class: "text-sm #{@status == "open" ? "font-medium text-gray-900" : "text-gray-500 hover:text-gray-700"}" %>
-    <%= link_to "Acknowledged", issues_path(status: "acknowledged"),
-          class: "text-sm #{@status == "acknowledged" ? "font-medium text-gray-900" : "text-gray-500 hover:text-gray-700"}" %>
-    <%= link_to "Resolved", issues_path(status: "resolved"),
-          class: "text-sm #{@status == "resolved" ? "font-medium text-gray-900" : "text-gray-500 hover:text-gray-700"}" %>
-    <%= link_to "All", issues_path(status: "all"),
-          class: "text-sm #{@status == "all" ? "font-medium text-gray-900" : "text-gray-500 hover:text-gray-700"}" %>
-  </div>
-
-  <% if @issues.empty? %>
-    <p class="text-gray-500">Nothing here. Issues open automatically when deliveries fail, transformations throw, or webhooks are quarantined.</p>
-  <% else %>
-    <table class="w-full text-sm">
-      <thead class="text-left text-gray-500 border-b">
-        <tr>
-          <th class="py-2 font-medium">Last seen</th>
-          <th class="py-2 font-medium">Type</th>
-          <th class="py-2 font-medium">Subject</th>
-          <th class="py-2 font-medium">Count</th>
-          <th class="py-2 font-medium">Status</th>
-          <th class="py-2 font-medium"></th>
-        </tr>
-      </thead>
-      <tbody>
-        <% @issues.each do |issue| %>
-          <tr class="border-b hover:bg-gray-50">
-            <td class="py-2">
-              <%= link_to issue.last_seen_at.strftime("%Y-%m-%d %H:%M:%S"),
-                    issue_path(issue), class: "text-blue-600 hover:underline" %>
-            </td>
-            <td class="py-2"><%= issue.issue_type.humanize %></td>
-            <td class="py-2"><%= issue.subject_name %></td>
-            <td class="py-2"><%= issue.count %></td>
-            <td class="py-2 <%= issue.status_open? ? "text-red-700" : (issue.status_acknowledged? ? "text-amber-700" : "text-gray-500") %>">
-              <%= issue.status %>
-            </td>
-            <td class="py-2">
-              <% if can_edit? %>
-                <div class="flex gap-3">
-                  <% if issue.status_open? %>
-                    <%= button_to "Acknowledge", acknowledge_issue_path(issue), method: :patch,
-                          class: "text-sm text-blue-600 hover:underline cursor-pointer" %>
-                  <% end %>
-                  <% unless issue.status_resolved? %>
-                    <%= button_to "Resolve", resolve_issue_path(issue), method: :patch,
-                          class: "text-sm text-blue-600 hover:underline cursor-pointer" %>
-                  <% end %>
-                </div>
-              <% end %>
-            </td>
+  <%
+    # Filtering to a specific state that happens to be empty is a different
+    # story from having no issues at all, so the empty row says which.
+    empty = if IssuesController::STATUSES.include?(@status)
+      { title: "No #{@status} issues", body: "Nothing sits in this state right now.",
+        cta_label: "View unresolved", cta_path: issues_path, gated: false }
+    else
+      { title: @status == "all" ? "No issues yet" : "No open issues",
+        body: "Issues open automatically when deliveries fail, transformations error, or webhooks are quarantined." }
+    end
+  %>
+  <div class="mt-6 <%= ui(:scroller) %>">
+    <div class="<%= ui(:scroller_inner) %>">
+      <table class="w-full text-sm">
+        <thead class="<%= ui(:table_head) %>">
+          <tr>
+            <th class="<%= ui(:th) %> w-px pr-6">Last seen</th>
+            <th class="<%= ui(:th) %> w-px pr-6">Type</th>
+            <th class="<%= ui(:th) %> w-full">Subject</th>
+            <th class="<%= ui(:th) %> w-px pr-6 text-right">Count</th>
+            <th class="<%= ui(:th) %> w-px pr-6">Status</th>
+            <th class="<%= ui(:th) %> w-px"><span class="sr-only">Actions</span></th>
           </tr>
-        <% end %>
-      </tbody>
-    </table>
-  <% end %>
+        </thead>
+        <tbody class="<%= ui(:table_body) %>">
+          <% if @issues.empty? %>
+            <%= render "shared/empty_row", colspan: 6, **empty %>
+          <% else %>
+            <% @issues.each do |issue| %>
+              <tr>
+                <td class="<%= ui(:td) %> w-px pr-6 tabular-nums">
+                  <%= link_to timestamp_tag(issue.last_seen_at, tabindex: nil), issue_path(issue),
+                        class: "font-medium hover:underline" %>
+                </td>
+                <td class="<%= ui(:td_muted) %> w-px pr-6"><%= issue.issue_type.humanize %></td>
+                <td class="<%= ui(:td_muted) %> w-full"><%= issue.subject_name %></td>
+                <td class="<%= ui(:td_muted) %> w-px pr-6 text-right tabular-nums"><%= issue.count %></td>
+                <td class="<%= ui(:td) %> w-px pr-6">
+                  <span class="<%= ui(:badge) %> <%= ui(tones.fetch(issue.status)) %>"><%= issue.status %></span>
+                </td>
+                <td class="<%= ui(:td) %> w-px">
+                  <% if can_edit? %>
+                    <div class="flex justify-end gap-3">
+                      <% if issue.status_open? %>
+                        <%= button_to "Acknowledge", acknowledge_issue_path(issue), method: :patch,
+                              class: "#{ui(:link)} cursor-pointer text-sm" %>
+                      <% end %>
+                      <% unless issue.status_resolved? %>
+                        <%= button_to "Resolve", resolve_issue_path(issue), method: :patch,
+                              class: "#{ui(:link)} cursor-pointer text-sm" %>
+                      <% end %>
+                    </div>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
 </div>

@@ -1,0 +1,224 @@
+<%
+  buckets = @metrics.buckets
+  labels = buckets.map { |b| b[:label] }
+  # Canvas fills can't read CSS variables, so these hexes have to hold contrast
+  # on both surfaces. Volume gets a muted rose so the brand red never competes
+  # with the red that actually means "failed".
+  events_series = [ { name: "Events", color: "#b0736c", values: buckets.map { |b| b[:events] } } ]
+  delivery_series = [
+    { name: "Delivered", color: "#10b981", values: buckets.map { |b| b[:delivered] } },
+    { name: "Failed",    color: "#ef4444", values: buckets.map { |b| b[:failed] } },
+    { name: "Pending",   color: "#737373", values: buckets.map { |b| b[:pending] } }
+  ]
+  rate = ->(value) { value.nil? ? "—" : "#{number_with_precision(value, precision: 1)}%" }
+  windows = { "24h" => "Last 24 hours", "7d" => "Last 7 days", "30d" => "Last 30 days" }
+  window_phrase = { "24h" => "the last 24 hours", "7d" => "the last 7 days", "30d" => "the last 30 days" }[@metrics.window]
+
+  stats = [
+    [ "Events received", number_with_delimiter(@totals[:events_received]) ],
+    [ "Delivered", number_with_delimiter(@totals[:delivered]) ],
+    [ "Failed", number_with_delimiter(@totals[:failed]) ],
+    [ "Success rate", rate.(@totals[:success_rate]) ]
+  ]
+
+  section_heading = "text-sm font-semibold text-neutral-950 dark:text-white"
+  needs_attention = @unhealthy_connections.any? || @open_issues_count.positive?
+  card = "rounded-xl elevated"
+  th_classes = "py-2.5 font-medium whitespace-nowrap"
+  # Scrollable tables bleed to the page edge until the container is wide enough
+  # to hold them; the padding here mirrors the page container's.
+  scroller = "-mx-5 -my-2 overflow-x-auto whitespace-nowrap @4xl:mx-0"
+  scroller_inner = "inline-block min-w-full px-5 py-2 align-middle @4xl:px-0"
+
+  # aria-sort belongs on the column header, not on the link inside it.
+  sortable_th = ->(label, key) do
+    active = @sort == key
+    tag.th(class: "#{th_classes} text-right", "aria-sort": (active ? "descending" : nil)) do
+      link_to dashboard_path(window: @metrics.window, sort: key),
+              class: "-my-2.5 inline-flex items-center py-2.5 #{active ? "text-neutral-950 dark:text-white" : "text-neutral-500 hover:text-neutral-950 dark:text-neutral-400 dark:hover:text-white"}" do
+        safe_join([ label, active ? " ↓" : "" ])
+      end
+    end
+  end
+
+  # Screen readers get a word where sighted readers get an arrow.
+  to_arrow = safe_join([ tag.span("to", class: "sr-only"), tag.span("→", "aria-hidden": true) ])
+%>
+
+<div class="@container">
+  <div class="flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <h1 class="<%= ui(:heading) %>">Dashboard</h1>
+      <p class="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
+        Delivery health for <%= Current.project.name %> over <%= window_phrase %>.
+      </p>
+    </div>
+
+    <nav aria-label="Time window" class="flex gap-1 rounded-lg p-1 elevated">
+      <% windows.each do |w, title| %>
+        <% active = @metrics.window == w %>
+        <%# before: pseudo-element grows the tap target to 48px without changing the pill. %>
+        <%= link_to w, dashboard_path(window: w, sort: @sort),
+              title: title,
+              "aria-current": (active ? "page" : nil),
+              class: "relative rounded-sm px-3 py-1.5 text-sm font-medium before:absolute before:inset-x-0 before:-inset-y-2 #{active ? "bg-oxblood-700 text-white dark:bg-oxblood-600" : "text-neutral-600 hover:bg-neutral-950/5 hover:text-neutral-950 dark:text-neutral-400 dark:hover:bg-white/5 dark:hover:text-white"}" %>
+      <% end %>
+    </nav>
+  </div>
+
+  <dl class="mt-8 grid grid-cols-2 gap-4 @2xl:grid-cols-4">
+    <% stats.each do |label, value| %>
+      <div class="<%= card %> px-5 py-4">
+        <dt class="truncate text-sm text-neutral-500 dark:text-neutral-400"><%= label %></dt>
+        <dd class="mt-1 text-3xl font-semibold tracking-tight tabular-nums text-neutral-950 dark:text-white"><%= value %></dd>
+      </div>
+    <% end %>
+  </dl>
+
+  <div class="mt-6 grid gap-6 @4xl:grid-cols-2">
+    <section class="<%= card %> px-5 py-4">
+      <h2 class="<%= section_heading %>">Volume</h2>
+      <%= render "dashboard/chart", type: "area", labels: labels, series: events_series,
+            aria_label: "Events received over #{window_phrase}, #{number_with_delimiter(@totals[:events_received])} in total." %>
+    </section>
+
+    <section class="<%= card %> px-5 py-4">
+      <div class="flex items-baseline justify-between gap-4">
+        <h2 class="<%= section_heading %>">Deliveries</h2>
+        <ul role="list" class="flex gap-3 text-xs text-neutral-500 dark:text-neutral-400">
+          <% delivery_series.each do |s| %>
+            <li class="flex items-center gap-1.5">
+              <span class="inline-block size-2 rounded-xs" style="background-color: <%= s[:color] %>" aria-hidden="true"></span>
+              <%= s[:name] %>
+            </li>
+          <% end %>
+        </ul>
+      </div>
+      <%= render "dashboard/chart", type: "bars", labels: labels, series: delivery_series,
+            aria_label: "Delivery outcomes over #{window_phrase}: #{number_with_delimiter(@totals[:delivered])} delivered, #{number_with_delimiter(@totals[:failed])} failed, #{number_with_delimiter(@totals[:pending])} pending." %>
+    </section>
+  </div>
+
+  <div class="mt-10 grid gap-10 @4xl:grid-cols-3">
+    <section class="@4xl:col-span-2">
+      <h2 class="<%= section_heading %>">Connections</h2>
+      <div class="<%= scroller %>">
+        <div class="<%= scroller_inner %>">
+          <table class="mt-1 w-full text-sm">
+            <thead class="border-b border-neutral-950/10 text-left text-neutral-500 dark:border-white/10 dark:text-neutral-400">
+              <tr>
+                <th class="<%= th_classes %>">Connection</th>
+                <%= sortable_th.("Events", "events") %>
+                <th class="<%= th_classes %> text-right">Delivered</th>
+                <%= sortable_th.("Failed", "failed") %>
+                <th class="<%= th_classes %> text-right">Pending</th>
+                <%= sortable_th.("Success rate", "success") %>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-neutral-950/5 dark:divide-white/5">
+              <% if @connection_rows.empty? %>
+                <tr><td colspan="6" class="py-3 text-neutral-500 dark:text-neutral-400">No deliveries in this window.</td></tr>
+              <% else %>
+                <% @connection_rows.each do |row| %>
+                  <tr>
+                    <td class="py-2.5 text-neutral-950 dark:text-white">
+                      <%= row[:connection].source.name %> <%= to_arrow %> <%= row[:connection].destination.name %>
+                    </td>
+                    <td class="py-2.5 text-right tabular-nums text-neutral-600 dark:text-neutral-400"><%= row[:events] %></td>
+                    <td class="py-2.5 text-right tabular-nums text-neutral-600 dark:text-neutral-400"><%= row[:delivered] %></td>
+                    <td class="py-2.5 text-right tabular-nums <%= row[:failed].positive? ? "text-red-600 dark:text-red-400" : "text-neutral-600 dark:text-neutral-400" %>"><%= row[:failed] %></td>
+                    <td class="py-2.5 text-right tabular-nums text-neutral-600 dark:text-neutral-400"><%= row[:pending] %></td>
+                    <td class="py-2.5 text-right tabular-nums text-neutral-600 dark:text-neutral-400"><%= rate.(row[:success_rate]) %></td>
+                  </tr>
+                <% end %>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="space-y-8">
+      <% if needs_attention %>
+        <div>
+          <h2 class="<%= section_heading %>">Needs attention</h2>
+          <ul role="list" class="mt-3 space-y-2">
+            <% if @open_issues_count.positive? %>
+              <li>
+                <%= link_to issues_path, class: "group flex items-center justify-between gap-4 rounded-lg bg-red-50 px-4 py-3 inset-ring inset-ring-red-600/20 dark:bg-red-950/40 dark:inset-ring-red-400/25" do %>
+                  <span class="text-sm font-medium text-red-800 dark:text-red-200"><%= pluralize(@open_issues_count, "open issue") %></span>
+                  <span class="shrink-0 text-sm text-red-700 group-hover:underline dark:text-red-300">View issues →</span>
+                <% end %>
+              </li>
+            <% end %>
+            <% @unhealthy_connections.each do |connection| %>
+              <li class="rounded-lg bg-red-50 px-4 py-3 inset-ring inset-ring-red-600/20 dark:bg-red-950/40 dark:inset-ring-red-400/25">
+                <p class="text-sm font-medium text-red-800 dark:text-red-200">
+                  <%= connection.source.name %> <%= to_arrow %> <%= connection.destination.name %>
+                </p>
+                <p class="mt-0.5 text-sm text-red-700 dark:text-red-300">
+                  Failing since <%= timestamp_tag(connection.unhealthy_since) %>
+                </p>
+              </li>
+            <% end %>
+          </ul>
+        </div>
+      <% end %>
+
+      <div>
+        <div class="flex items-baseline justify-between gap-4">
+          <h2 class="<%= section_heading %>">Recent events</h2>
+          <%= link_to "View all", events_path, class: "text-sm font-medium text-oxblood-700 hover:text-oxblood-900 dark:text-oxblood-300 dark:hover:text-oxblood-200" %>
+        </div>
+        <% if @recent_events.any? %>
+          <ul role="list" class="mt-2 divide-y divide-neutral-950/5 dark:divide-white/5">
+            <% @recent_events.each do |event| %>
+              <li class="flex items-center justify-between gap-4 py-2.5">
+                <p class="min-w-0 truncate text-sm font-medium text-neutral-950 dark:text-white"><%= event.source.name %></p>
+                <p class="shrink-0 text-sm text-neutral-500 dark:text-neutral-400"><%= timestamp_tag(event.received_at) %></p>
+              </li>
+            <% end %>
+          </ul>
+        <% else %>
+          <p class="mt-3 text-sm text-neutral-500 dark:text-neutral-400">
+            No events yet. Point a webhook at one of your sources and deliveries will show up here.
+          </p>
+        <% end %>
+      </div>
+    </section>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="<%= section_heading %>">Latency by destination</h2>
+    <div class="<%= scroller %>">
+      <div class="<%= scroller_inner %>">
+        <table class="mt-1 w-full text-sm">
+          <thead class="border-b border-neutral-950/10 text-left text-neutral-500 dark:border-white/10 dark:text-neutral-400">
+            <tr>
+              <th class="<%= th_classes %>">Destination</th>
+              <th class="<%= th_classes %> text-right">Attempts</th>
+              <th class="<%= th_classes %> text-right">p50 (ms)</th>
+              <th class="<%= th_classes %> text-right">p95 (ms)</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-neutral-950/5 dark:divide-white/5">
+            <% rows = @metrics.latency_by_destination %>
+            <% if rows.empty? %>
+              <tr><td colspan="4" class="py-3 text-neutral-500 dark:text-neutral-400">No timed attempts in this window.</td></tr>
+            <% else %>
+              <% rows.each do |row| %>
+                <tr>
+                  <td class="py-2.5 text-neutral-950 dark:text-white"><%= row[:destination].name %></td>
+                  <td class="py-2.5 text-right tabular-nums text-neutral-600 dark:text-neutral-400"><%= row[:count] %></td>
+                  <td class="py-2.5 text-right tabular-nums text-neutral-600 dark:text-neutral-400"><%= row[:p50] %></td>
+                  <td class="py-2.5 text-right tabular-nums text-neutral-600 dark:text-neutral-400"><%= row[:p95] %></td>
+                </tr>
+              <% end %>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <p class="mt-2 text-xs text-neutral-500 dark:text-neutral-400">Attempts without a recorded latency are excluded.</p>
+  </section>
+</div>

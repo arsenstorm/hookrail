@@ -188,6 +188,40 @@ class IngestVerificationTest < ActionDispatch::IntegrationTest
     assert_equal "timestamp outside tolerance", source.quarantined_webhooks.last.reason
   end
 
+  test "slack preset accepts a signature over its versioned payload template" do
+    source = Source.create!(name: "Slack", project: create_test_project!,
+                            verification: { provider: "slack", secret: "slack_secret" })
+    body = '{"hello":"world"}'
+    ts = Time.current.to_i
+    sig = "v0=" + OpenSSL::HMAC.hexdigest("SHA256", "slack_secret", "v0:#{ts}:#{body}")
+
+    assert_difference -> { source.events.count }, 1 do
+      post "/ingest/#{source.token}", params: body, headers: {
+        "Content-Type" => "application/json",
+        "X-Slack-Signature" => sig,
+        "X-Slack-Request-Timestamp" => ts.to_s
+      }
+    end
+
+    assert_response :ok
+  end
+
+  test "shopify preset accepts a base64 signature over the raw body" do
+    source = Source.create!(name: "Shopify", project: create_test_project!,
+                            verification: { provider: "shopify", secret: "shpss_secret" })
+    body = '{"hello":"world"}'
+    sig = Base64.strict_encode64(OpenSSL::HMAC.digest("SHA256", "shpss_secret", body))
+
+    assert_difference -> { source.events.count }, 1 do
+      post "/ingest/#{source.token}", params: body, headers: {
+        "Content-Type" => "application/json",
+        "X-Shopify-Hmac-Sha256" => sig
+      }
+    end
+
+    assert_response :ok
+  end
+
   private
 
   def stripe_preset_source

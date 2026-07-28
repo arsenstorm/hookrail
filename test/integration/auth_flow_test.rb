@@ -20,22 +20,51 @@ class AuthFlowTest < ActionDispatch::IntegrationTest
     follow_redirect!            # GET /auth/github/callback -> sessions#create
   end
 
-  test "redirects unauthenticated users to login" do
+  test "redirects unauthenticated users to sign-in" do
+    get dashboard_path
+    assert_redirected_to sign_in_path
+  end
+
+  test "the sign-in page offers GitHub" do
+    get sign_in_path
+    assert_response :ok
+    assert_select "form[action='/auth/github'] button", text: /Continue with GitHub/
+  end
+
+  test "root renders the marketing page and its CTA follows the session" do
     get root_path
-    assert_redirected_to login_path
+    assert_response :ok
+    assert_select "a[href=?]", sign_in_path, text: "Get started"
+    assert_select "a[href=?]", dashboard_path, false
+
+    sign_in!
+    get root_path
+    assert_response :ok
+    assert_select "a[href=?]", dashboard_path, text: "Open dashboard"
+    assert_select "a[href=?]", sign_in_path, false
+  end
+
+  test "the old auth paths keep working" do
+    get "/login"
+    assert_response :moved_permanently
+    assert_redirected_to sign_in_path
+
+    delete "/logout"
+    assert_response :moved_permanently
+    assert_redirected_to sign_out_path
   end
 
   test "first sign-in creates user, org, and default project" do
     assert_difference [ "User.count", "Organization.count", "Project.count" ], 1 do
       sign_in!
     end
-    assert_redirected_to root_path
+    assert_redirected_to dashboard_path
     user = User.last
     assert_equal "12345", user.github_uid
     assert_equal "octocat", user.github_login
     assert_equal "Default", user.organization.projects.first.name
     # session established: a protected route now works
-    get root_path
+    get dashboard_path
     assert_response :ok
   end
 
@@ -49,10 +78,10 @@ class AuthFlowTest < ActionDispatch::IntegrationTest
 
   test "sign out clears the session" do
     sign_in!
-    delete logout_path
-    assert_redirected_to login_path
-    get root_path
-    assert_redirected_to login_path
+    delete sign_out_path
+    assert_redirected_to sign_in_path
+    get dashboard_path
+    assert_redirected_to sign_in_path
   end
 
   test "resources require a project" do

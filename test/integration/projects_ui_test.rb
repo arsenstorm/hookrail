@@ -25,6 +25,19 @@ class ProjectsUiTest < ActionDispatch::IntegrationTest
     user
   end
 
+  test "the index offers a create dialog and a per-row actions menu" do
+    owner = make_user!("owner0")
+    project = owner.organization.projects.first
+    sign_in_as!(owner)
+
+    get projects_path
+    assert_response :ok
+    assert_select "button[data-action=?]", "dialog#open", text: "New project"
+    assert_select "button[aria-label=?]", "Project actions", count: 1
+    assert_select "[role=menu] button[data-action=?]", "dialog#open dropdown#toggle", text: "Rename"
+    assert_select "dialog form[action=?]", project_path(project)
+  end
+
   test "owner creates a project and cannot duplicate a name case-insensitively" do
     owner = make_user!("owner1")
     sign_in_as!(owner)
@@ -93,7 +106,7 @@ class ProjectsUiTest < ActionDispatch::IntegrationTest
     sign_in_as!(owner)
 
     post switch_project_path(project_b.id)
-    assert_redirected_to root_path
+    assert_redirected_to dashboard_path
     assert_equal project_b.id, membership.reload.current_project_id
 
     get sources_path
@@ -115,7 +128,7 @@ class ProjectsUiTest < ActionDispatch::IntegrationTest
 
     project_b.destroy
 
-    get root_path
+    get dashboard_path
     assert_response :ok
     assert_match project_a.name, response.body
   end
@@ -132,14 +145,14 @@ class ProjectsUiTest < ActionDispatch::IntegrationTest
 
     sign_in_as!(viewer)
 
-    get root_path
+    get dashboard_path
     assert_response :ok
 
     post switch_project_path(project_b.id)
     assert_response :not_found
 
     get projects_path
-    assert_redirected_to root_path
+    assert_redirected_to dashboard_path
     follow_redirect!
     assert_match "You don&#39;t have permission to do that.", response.body
   end
@@ -158,6 +171,6 @@ class ProjectsUiTest < ActionDispatch::IntegrationTest
     assert_no_difference "Project.count" do
       post projects_path, params: { project: { name: "New" } }
     end
-    assert_redirected_to root_path
+    assert_redirected_to dashboard_path
   end
 end

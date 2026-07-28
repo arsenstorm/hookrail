@@ -1,45 +1,45 @@
 <% content_for :title, "Issue" %>
-<div class="w-full max-w-4xl mx-auto py-16">
-  <div class="flex items-center justify-between mb-6">
-    <h1 class="text-2xl font-semibold">Issue</h1>
-    <%= link_to "Issues", issues_path, class: "text-sm text-gray-500 hover:text-gray-700" %>
+<div>
+  <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
+    <h1 class="<%= ui(:heading) %>">Issue</h1>
+    <%= link_to "Issues", issues_path, class: ui(:muted_link) %>
   </div>
 
   <dl>
-    <div class="flex gap-4 py-2 border-b text-sm">
-      <dt class="w-32 text-gray-500">Type</dt>
+    <div class="flex gap-4 border-b border-neutral-950/5 py-2 text-sm dark:border-white/5">
+      <dt class="w-32 text-neutral-500 dark:text-neutral-400">Type</dt>
       <dd><%= @issue.issue_type.humanize %></dd>
     </div>
-    <div class="flex gap-4 py-2 border-b text-sm">
-      <dt class="w-32 text-gray-500">Status</dt>
+    <div class="flex gap-4 border-b border-neutral-950/5 py-2 text-sm dark:border-white/5">
+      <dt class="w-32 text-neutral-500 dark:text-neutral-400">Status</dt>
       <dd><%= @issue.status %></dd>
     </div>
-    <div class="flex gap-4 py-2 border-b text-sm">
-      <dt class="w-32 text-gray-500">Subject</dt>
+    <div class="flex gap-4 border-b border-neutral-950/5 py-2 text-sm dark:border-white/5">
+      <dt class="w-32 text-neutral-500 dark:text-neutral-400">Subject</dt>
       <dd>
         <% if @issue.subject.is_a?(Connection) %>
-          <%= link_to @issue.subject_name, edit_connection_path(@issue.subject), class: "text-blue-600 hover:underline" %>
+          <%= link_to @issue.subject_name, edit_connection_path(@issue.subject), class: ui(:link) %>
         <% elsif @issue.subject.is_a?(Source) %>
-          <%= link_to @issue.subject_name, source_path(@issue.subject), class: "text-blue-600 hover:underline" %>
+          <%= link_to @issue.subject_name, source_path(@issue.subject), class: ui(:link) %>
         <% else %>
           <%= @issue.subject_name %>
         <% end %>
       </dd>
     </div>
-    <div class="flex gap-4 py-2 border-b text-sm">
-      <dt class="w-32 text-gray-500">Count</dt>
+    <div class="flex gap-4 border-b border-neutral-950/5 py-2 text-sm dark:border-white/5">
+      <dt class="w-32 text-neutral-500 dark:text-neutral-400">Count</dt>
       <dd><%= @issue.count %></dd>
     </div>
-    <div class="flex gap-4 py-2 border-b text-sm">
-      <dt class="w-32 text-gray-500">First seen</dt>
-      <dd><%= @issue.first_seen_at.strftime("%Y-%m-%d %H:%M:%S") %></dd>
+    <div class="flex gap-4 border-b border-neutral-950/5 py-2 text-sm dark:border-white/5">
+      <dt class="w-32 text-neutral-500 dark:text-neutral-400">First seen</dt>
+      <dd><%= timestamp_tag(@issue.first_seen_at) %></dd>
     </div>
-    <div class="flex gap-4 py-2 border-b text-sm">
-      <dt class="w-32 text-gray-500">Last seen</dt>
-      <dd><%= @issue.last_seen_at.strftime("%Y-%m-%d %H:%M:%S") %></dd>
+    <div class="flex gap-4 border-b border-neutral-950/5 py-2 text-sm dark:border-white/5">
+      <dt class="w-32 text-neutral-500 dark:text-neutral-400">Last seen</dt>
+      <dd><%= timestamp_tag(@issue.last_seen_at) %></dd>
     </div>
-    <div class="flex gap-4 py-2 border-b text-sm">
-      <dt class="w-32 text-gray-500">Summary</dt>
+    <div class="flex gap-4 border-b border-neutral-950/5 py-2 text-sm dark:border-white/5">
+      <dt class="w-32 text-neutral-500 dark:text-neutral-400">Summary</dt>
       <dd><%= @issue.summary %></dd>
     </div>
   </dl>
@@ -48,11 +48,11 @@
     <div class="mt-6 flex gap-4">
       <% if @issue.status_open? %>
         <%= button_to "Acknowledge", acknowledge_issue_path(@issue), method: :patch,
-              class: "text-sm text-blue-600 hover:underline cursor-pointer" %>
+              class: "#{ui(:link)} cursor-pointer text-sm" %>
       <% end %>
       <% unless @issue.status_resolved? %>
         <%= button_to "Resolve", resolve_issue_path(@issue), method: :patch,
-              class: "text-sm text-blue-600 hover:underline cursor-pointer" %>
+              class: "#{ui(:link)} cursor-pointer text-sm" %>
       <% end %>
     </div>
   <% end %>

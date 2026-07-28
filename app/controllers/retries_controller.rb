@@ -6,7 +6,7 @@ class RetriesController < ApplicationController
     connection = event.source.connections.find(params[:connection_id])
 
     unless connection.status_active?
-      return redirect_to event_path(event), alert: "That connection is #{connection.status} — deliveries are stopped."
+      return redirect_to event_path(event), alert: "That connection is #{connection.status}, so deliveries are stopped."
     end
 
     latest = Attempt.where(event: event, connection: connection).order(:attempt_number).last
