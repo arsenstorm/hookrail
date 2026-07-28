@@ -1,4 +1,4 @@
-<% content_for :title, "Hookrail — webhooks that arrive" %>
+<% content_for :title, "Hookrail: webhooks that arrive" %>
 
 <%
   # Shared bits: one checked-box glyph for every chip, one hairline, one rule.
@@ -64,13 +64,13 @@
 
   <div class="relative mx-auto max-w-3xl">
     <span class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium text-white/85 inset-ring inset-ring-white/15">
-      <%= checkbox %>Receive. Verify. Deliver.
+      <%= checkbox %>Receive, verify, and deliver webhooks
     </span>
 
     <h1 class="mt-6 text-4xl font-semibold tracking-tight text-balance text-white sm:text-5xl lg:text-6xl">Webhooks that arrive.</h1>
 
     <p class="mx-auto mt-5 max-w-[60ch] text-base/7 text-pretty text-white/80 sm:text-lg/8">
-      Receive webhooks, verify signatures, transform payloads, and deliver them to your endpoints — with retries until each one lands.
+      Receive webhooks, verify signatures, transform payloads, and deliver them to your endpoints, with retries until each one lands.
     </p>
 
     <div class="mt-9 flex flex-wrap items-center justify-center gap-3">
@@ -130,7 +130,9 @@
                   <span class="text-neutral-400">POST</span> /ingest/<%= token %>
                 </span>
                 <span class="min-w-0 flex-1 truncate max-sm:hidden"><%= type %></span>
-                <span class="<%= ui(:badge) %> <%= tone %>"><%= status %></span>
+                <span class="flex w-24 shrink-0 justify-end">
+                  <span class="<%= ui(:badge) %> <%= tone %>"><%= status %></span>
+                </span>
                 <span class="font-mono text-neutral-400 max-sm:hidden"><%= time %></span>
               </div>
             <% end %>
@@ -144,7 +146,7 @@
     <span class="<%= chip %>"><%= checkbox %>How it works</span>
     <h2 class="<%= section_heading %>">One hop between your provider and your app</h2>
     <p class="<%= section_sub %>">
-      Point a provider at a Hookrail ingest URL. Everything after that is configuration, not code.
+      Point a provider at a Hookrail ingest URL and give Hookrail your endpoint. It verifies, filters, and retries in between.
     </p>
 
     <%# Diagram is plain DOM so it reflows on mobile and inherits both themes. %>
@@ -200,7 +202,7 @@
           [ :issues, "bg-oxblood-700 dark:bg-oxblood-600", "Issues with Slack & Discord alerts",
             "Repeated failures open a persistent issue you acknowledge and resolve. Alerts post to a Slack or Discord webhook." ],
           [ :shield, "bg-emerald-700 dark:bg-emerald-600", "Signature verification",
-            "Reject payloads the sender didn’t sign. Stripe has a preset; anything else configures by header, format, and key." ],
+            "Reject payloads the sender didn’t sign. Pick a provider preset, or set the header, format, and key yourself." ],
           [ :connections, "bg-oxblood-700 dark:bg-oxblood-600", "Filters & transformations",
             "Send a destination only the events it cares about, and reshape the payload before it goes out." ],
           [ :lock, "bg-oxblood-700 dark:bg-oxblood-600", "Quarantine",
@@ -249,9 +251,9 @@ Waiting for events… (Ctrl-C to stop)</pre>
         Every attempt keeps its response code and body, so a failure is something you can read rather than guess at. Statuses mean one thing across the whole app.
       </p>
       <ul class="mt-6 flex flex-col items-start gap-2">
-        <% [ [ "bg-emerald-600 dark:bg-emerald-400", "Green means delivered" ],
-             [ "bg-amber-500 dark:bg-amber-400", "Amber means retrying" ],
-             [ "bg-red-600 dark:bg-red-400", "Red means failed" ] ].each do |dot, label| %>
+        <% [ [ "bg-emerald-600 dark:bg-emerald-400", "delivered" ],
+             [ "bg-amber-500 dark:bg-amber-400", "retrying" ],
+             [ "bg-red-600 dark:bg-red-400", "failed" ] ].each do |dot, label| %>
           <li class="inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm inset-ring inset-ring-neutral-950/10 dark:inset-ring-white/10">
             <span aria-hidden="true" class="size-2 rounded-full <%= dot %>"></span><%= label %>
           </li>
@@ -288,10 +290,7 @@ Waiting for events… (Ctrl-C to stop)</pre>
 
   <section class="px-5 py-20 text-center lg:px-8">
     <span class="<%= chip %>"><%= checkbox %>One minute of setup</span>
-    <h2 class="<%= section_heading %>">Start receiving webhooks</h2>
-    <p class="<%= section_sub %>">
-      Sign in with GitHub. A source and an ingest URL take about a minute.
-    </p>
+    <h2 class="<%= section_heading %> text-balance max-w-lg mx-auto">Start receiving webhooks you can inspect, retry, and replay</h2>
     <div class="mt-8 flex justify-center">
       <%= render "pages/cta" %>
     </div>

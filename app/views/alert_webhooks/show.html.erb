@@ -7,7 +7,7 @@
       hint: "Signed JSON, one POST per alert." },
     { key: "slack", name: "Slack", attribute: :slack_webhook_url,
       placeholder: "https://hooks.slack.com/services/…",
-      hint: "An incoming webhook URL from a Slack app — posts land in the channel it was created for." },
+      hint: "An incoming webhook URL from a Slack app. Posts land in the channel it was created for." },
     { key: "discord", name: "Discord", attribute: :discord_webhook_url,
       placeholder: "https://discord.com/api/webhooks/…",
       hint: "A channel webhook URL from Discord's channel integration settings." }
@@ -19,8 +19,8 @@
   <h1 class="<%= ui(:heading) %>">Alerts</h1>
   <p class="mt-1 max-w-2xl <%= ui(:hint) %>">
     The three incident alerts go out by email, and can also be posted to a channel. A webhook gets signed
-    JSON, one POST per alert; chat channels get a message when a new issue opens — delivery failures,
-    transformation errors, quarantined webhooks. Repeats of an open issue don't re-notify.
+    JSON, one POST per alert; chat channels get a message when a new issue opens: delivery failures,
+    transformation errors, or quarantined webhooks. Repeats of an open issue don't re-notify.
   </p>
 
   <% if configured.any? %>
@@ -85,7 +85,7 @@
       </div>
       <p class="mt-2 <%= ui(:hint) %>">
         Verify <code>X-Hookrail-Signature</code> as the HMAC-SHA256 of <code>"timestamp.body"</code> with this
-        secret — the same scheme as event deliveries, see the README.
+        secret. Same scheme as event deliveries, see the README.
       </p>
     </section>
   <% end %>

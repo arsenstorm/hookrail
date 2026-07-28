@@ -4,7 +4,7 @@
   <h1 class="<%= ui(:heading) %>">Data retention</h1>
   <p class="mt-1 max-w-2xl <%= ui(:hint) %>">
     One window for the whole org. Every night, events, delivery attempts, and quarantined webhooks older
-    than it are deleted for good — there is no export and no undo. Metrics daily rollups are kept, so the
+    than it are deleted for good. There is no export and no undo. Metrics daily rollups are kept, so the
     charts keep their history after the raw payloads are gone, and sources, destinations, connections, and
     API keys are never touched.
   </p>
@@ -22,7 +22,7 @@
       <% {
            7  => "Tightest window. Keep only the last week of raw traffic.",
            30 => "The default. A month of payloads to debug against.",
-           90 => "Longest window. Keep a quarter of raw traffic around."
+           90 => "Longest window. Keep a quarter of raw traffic."
          }.each do |days, description| %>
         <%# has-checked: the selected card tints and darkens its ring, so the
             choice reads from across the page, not just from the radio dot. %>

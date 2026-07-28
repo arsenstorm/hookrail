@@ -17,7 +17,7 @@ class CliAuthorizationsController < ApplicationController
       redirect_to dashboard_path, notice: "CLI access denied."
     else
       authorization.update!(status: :approved, user: Current.user, organization: Current.organization)
-      redirect_to dashboard_path, notice: "CLI authorized for #{Current.organization.name} — return to your terminal."
+      redirect_to dashboard_path, notice: "CLI authorized for #{Current.organization.name}. Return to your terminal."
     end
   end
 end

@@ -12,7 +12,7 @@
       <%= form_with url: api_keys_path, scope: :api_key, class: "mt-4" do |f| %>
         <%= f.label :name, "Key name", class: ui(:label) %>
         <%= f.text_field :name, placeholder: "CI deploy", autofocus: true, class: "#{ui(:input)} mt-1.5" %>
-        <p class="mt-1.5 <%= ui(:hint) %>">Names are for you — they show up in this list and nowhere else.</p>
+        <p class="mt-1.5 <%= ui(:hint) %>">Names are for you. They show up in this list and nowhere else.</p>
         <div class="mt-5 flex justify-end gap-3">
           <button type="button" data-action="dialog#close" class="<%= ui(:button_secondary) %>">Cancel</button>
           <%= f.submit "Create key", class: ui(:button_primary) %>
@@ -28,7 +28,7 @@
 
   <% if flash[:new_api_key] %>
     <div class="mt-6 max-w-2xl rounded-xl bg-amber-50 p-4 inset-ring inset-ring-amber-600/20 dark:bg-amber-400/10 dark:inset-ring-amber-400/25">
-      <h2 class="text-sm font-semibold text-amber-900 dark:text-amber-300">Copy this key now — it will not be shown again</h2>
+      <h2 class="text-sm font-semibold text-amber-900 dark:text-amber-300">Copy this key now. It will not be shown again.</h2>
       <div class="mt-2 rounded-lg surface px-3 py-2 font-mono text-sm break-all select-all inset-ring inset-ring-amber-600/20 dark:inset-ring-amber-400/25">
         <%= flash[:new_api_key] %>
       </div>

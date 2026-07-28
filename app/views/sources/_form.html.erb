@@ -44,7 +44,7 @@
         <%= f.select :verification_provider,
               [ [ "Generic (configure below)", "" ] ] + Source::PROVIDER_NAMES.map { |k, v| [ v, k ] }, {},
               class: "#{ui(:select)} w-full" %>
-        <p class="mt-1 <%= ui(:hint) %>">A provider preset needs only the signing secret — everything under Advanced verification is filled in automatically and kept in sync. Switching back to generic keeps the values for editing.</p>
+        <p class="mt-1 <%= ui(:hint) %>">A provider preset needs only the signing secret. Everything under Advanced verification is filled in automatically and kept in sync. Switching back to generic keeps the values for editing.</p>
       </div>
 
       <div>
@@ -170,7 +170,7 @@
     <h2 id="blank-secret-heading" class="<%= ui(:subheading) %>">No signing secret</h2>
     <p class="mt-2 <%= ui(:hint) %>">
       Without a secret, Hookrail can't verify that requests really come from
-      <%= Source.provider_name(preset || @source.verification_provider) || "your provider" %> — anyone who
+      <%= Source.provider_name(preset || @source.verification_provider) || "your provider" %>. Anyone who
       discovers the ingest URL can inject events. Add one unless this source is intentionally unverified.
     </p>
     <div class="mt-5 flex flex-wrap justify-end gap-2">

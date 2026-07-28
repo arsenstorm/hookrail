@@ -16,14 +16,14 @@
           class: "shrink-0 cursor-pointer rounded-md bg-oxblood-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-oxblood-800 dark:bg-oxblood-600 dark:hover:bg-oxblood-500" %>
   </div>
   <p class="mt-2 text-xs text-neutral-500 dark:text-neutral-400">
-    GitHub is the only way into this account — there is no password to change. Revoking the Hookrail
+    GitHub is the only way into this account, so there is no password to change. Revoking the Hookrail
     OAuth app in your GitHub settings blocks future sign-ins.
   </p>
 
   <h2 class="mt-10 text-sm font-semibold text-neutral-950 dark:text-white">CLI tokens</h2>
   <p class="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
     Device credentials issued by <code class="rounded-sm bg-neutral-950/5 px-1 py-0.5 text-xs dark:bg-white/10">hookrail login</code>,
-    scoped to <%= Current.organization&.name || "this organization" %>. They act as you — revoke any you don't recognise.
+    scoped to <%= Current.organization&.name || "this organization" %>. They act as you, so revoke any you don't recognise.
   </p>
   <% if @cli_tokens.any? %>
     <ul role="list" class="mt-3 divide-y divide-neutral-950/5 dark:divide-white/5">
@@ -44,7 +44,7 @@
     </ul>
   <% else %>
     <p class="mt-3 text-sm text-neutral-500 dark:text-neutral-400">
-      No active tokens — run <code class="rounded-sm bg-neutral-950/5 px-1 py-0.5 text-xs dark:bg-white/10">hookrail login</code> to issue one.
+      No active tokens. Run <code class="rounded-sm bg-neutral-950/5 px-1 py-0.5 text-xs dark:bg-white/10">hookrail login</code> to issue one.
     </p>
   <% end %>
 </div>

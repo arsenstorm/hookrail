@@ -66,7 +66,7 @@
         <div>
           <%= f.label :rate_limit, "Rate limit", class: "#{ui(:label)} mb-1" %>
           <p class="mb-1 <%= ui(:hint) %>">Caps how fast deliveries go out to this destination. Anything over the
-            limit queues and is sent as slots free up — nothing is dropped. Leave blank for unlimited.</p>
+            limit queues and is sent as slots free up. Nothing is dropped. Leave blank for unlimited.</p>
           <div class="flex gap-2">
             <%= f.number_field :rate_limit, min: 1, placeholder: "Unlimited", class: ui(:input) %>
             <%= f.select :rate_limit_period, [ [ "per second", "second" ], [ "per minute", "minute" ] ],

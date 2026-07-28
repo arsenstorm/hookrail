@@ -11,7 +11,7 @@ class BulkReplaysController < ApplicationController
 
     unless connection.status_active?
       return redirect_to events_path(@filter_params),
-        alert: "That connection is #{connection.status} — resume it before replaying."
+        alert: "That connection is #{connection.status}. Resume it before replaying."
     end
 
     events    = selected_events
