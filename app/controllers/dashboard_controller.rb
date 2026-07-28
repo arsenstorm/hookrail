@@ -7,7 +7,7 @@ class DashboardController < ApplicationController
   }.freeze
 
   def show
-    @unhealthy_connections = Current.project ? Current.project.connections.unhealthy.includes(:source, :destination) : Connection.none
+    @unhealthy_connections = Current.project ? Current.project.connections.actively_unhealthy.includes(:source, :destination) : Connection.none
     return unless Current.project
 
     @metrics = Metrics.new(project: Current.project, window: params[:window])

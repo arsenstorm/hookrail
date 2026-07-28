@@ -10,23 +10,24 @@
     </div>
   </div>
 
-  <% if @destinations.empty? %>
-    <%= render "shared/empty_state", title: "No destinations yet",
-          body: "A destination is where events get delivered — an HTTPS endpoint or a local CLI session.",
-          cta_label: "New destination", cta_path: new_destination_path %>
-  <% else %>
-    <div class="<%= ui(:scroller) %>">
-      <div class="<%= ui(:scroller_inner) %>">
-        <table class="w-full text-sm">
-          <thead class="<%= ui(:table_head) %>">
-            <tr>
-              <th class="<%= ui(:th) %> w-full pr-6">Name</th>
-              <th class="<%= ui(:th) %> w-px max-w-xs pr-6">URL</th>
-              <th class="<%= ui(:th) %> w-px pr-6">Created</th>
-              <th class="<%= ui(:th) %> w-px text-right"><span class="sr-only">Actions</span></th>
-            </tr>
-          </thead>
-          <tbody class="<%= ui(:table_body) %>">
+  <div class="<%= ui(:scroller) %>">
+    <div class="<%= ui(:scroller_inner) %>">
+      <table class="w-full text-sm">
+        <thead class="<%= ui(:table_head) %>">
+          <tr>
+            <th class="<%= ui(:th) %> w-full pr-6">Name</th>
+            <th class="<%= ui(:th) %> w-px max-w-xs pr-6">URL</th>
+            <th class="<%= ui(:th) %> w-px pr-6">Created</th>
+            <th class="<%= ui(:th) %> w-px text-right"><span class="sr-only">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody class="<%= ui(:table_body) %>">
+          <% if @destinations.empty? %>
+            <%= render "shared/empty_row", colspan: 4,
+                  title: "No destinations yet",
+                  body: "A destination is where events get delivered — an HTTPS endpoint or a local CLI session.",
+                  cta_label: "New destination", cta_path: new_destination_path %>
+          <% else %>
             <% @destinations.each do |destination| %>
               <tr>
                 <td class="<%= ui(:td) %> w-full pr-6">
@@ -54,9 +55,9 @@
                 </td>
               </tr>
             <% end %>
-          </tbody>
-        </table>
-      </div>
+          <% end %>
+        </tbody>
+      </table>
     </div>
-  <% end %>
+  </div>
 </div>

@@ -48,6 +48,16 @@ class TeamUiTest < ActionDispatch::IntegrationTest
     assert_redirected_to dashboard_path
   end
 
+  test "the invite form sits behind a dialog trigger" do
+    owner = make_owner!("downer")
+    sign_in_as!(owner)
+
+    get members_path
+    assert_response :ok
+    assert_select "button[data-action=?]", "dialog#open", text: "Invite someone"
+    assert_select "dialog form[action=?]", invitations_path
+  end
+
   test "inviting shows a copyable link and revoking removes it" do
     owner = make_owner!("iowner")
     sign_in_as!(owner)

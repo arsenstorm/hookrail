@@ -20,32 +20,34 @@
     <% end %>
   </div>
 
-  <% if @issues.empty? %>
-    <div class="mt-6 rounded-xl px-6 py-16 text-center inset-ring inset-ring-neutral-950/10 dark:inset-ring-white/10">
-      <% if IssuesController::STATUSES.include?(@status) %>
-        <p class="<%= ui(:section) %>">No <%= @status %> issues</p>
-        <p class="mx-auto mt-1 max-w-sm <%= ui(:hint) %>">Nothing sits in this state right now.</p>
-        <%= link_to "View unresolved", issues_path, class: "#{ui(:button_secondary)} mt-4" %>
-      <% else %>
-        <p class="<%= ui(:section) %>"><%= @status == "all" ? "No issues yet" : "No open issues" %></p>
-        <p class="mx-auto mt-1 max-w-sm <%= ui(:hint) %>">Issues open automatically when deliveries fail, transformations error, or webhooks are quarantined.</p>
-      <% end %>
-    </div>
-  <% else %>
-    <div class="mt-6 <%= ui(:scroller) %>">
-      <div class="<%= ui(:scroller_inner) %>">
-        <table class="w-full text-sm">
-          <thead class="<%= ui(:table_head) %>">
-            <tr>
-              <th class="<%= ui(:th) %> w-px pr-6">Last seen</th>
-              <th class="<%= ui(:th) %> w-px pr-6">Type</th>
-              <th class="<%= ui(:th) %> w-full">Subject</th>
-              <th class="<%= ui(:th) %> w-px pr-6 text-right">Count</th>
-              <th class="<%= ui(:th) %> w-px pr-6">Status</th>
-              <th class="<%= ui(:th) %> w-px"><span class="sr-only">Actions</span></th>
-            </tr>
-          </thead>
-          <tbody class="<%= ui(:table_body) %>">
+  <%
+    # Filtering to a specific state that happens to be empty is a different
+    # story from having no issues at all, so the empty row says which.
+    empty = if IssuesController::STATUSES.include?(@status)
+      { title: "No #{@status} issues", body: "Nothing sits in this state right now.",
+        cta_label: "View unresolved", cta_path: issues_path, gated: false }
+    else
+      { title: @status == "all" ? "No issues yet" : "No open issues",
+        body: "Issues open automatically when deliveries fail, transformations error, or webhooks are quarantined." }
+    end
+  %>
+  <div class="mt-6 <%= ui(:scroller) %>">
+    <div class="<%= ui(:scroller_inner) %>">
+      <table class="w-full text-sm">
+        <thead class="<%= ui(:table_head) %>">
+          <tr>
+            <th class="<%= ui(:th) %> w-px pr-6">Last seen</th>
+            <th class="<%= ui(:th) %> w-px pr-6">Type</th>
+            <th class="<%= ui(:th) %> w-full">Subject</th>
+            <th class="<%= ui(:th) %> w-px pr-6 text-right">Count</th>
+            <th class="<%= ui(:th) %> w-px pr-6">Status</th>
+            <th class="<%= ui(:th) %> w-px"><span class="sr-only">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody class="<%= ui(:table_body) %>">
+          <% if @issues.empty? %>
+            <%= render "shared/empty_row", colspan: 6, **empty %>
+          <% else %>
             <% @issues.each do |issue| %>
               <tr>
                 <td class="<%= ui(:td) %> w-px pr-6 tabular-nums">
@@ -74,9 +76,9 @@
                 </td>
               </tr>
             <% end %>
-          </tbody>
-        </table>
-      </div>
+          <% end %>
+        </tbody>
+      </table>
     </div>
-  <% end %>
+  </div>
 </div>

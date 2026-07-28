@@ -1,6 +1,26 @@
 <% content_for :title, "Organization settings · API keys" %>
 <div>
-  <h1 class="<%= ui(:heading) %>">API keys</h1>
+  <div data-controller="dialog">
+    <div class="flex flex-wrap items-center justify-between gap-4">
+      <h1 class="<%= ui(:heading) %>">API keys</h1>
+      <button type="button" data-action="dialog#open" class="<%= ui(:button_primary) %>">Create key</button>
+    </div>
+
+    <dialog data-dialog-target="dialog" aria-labelledby="new-api-key-heading"
+            class="m-auto w-full max-w-sm rounded-xl p-5 elevated backdrop:bg-neutral-950/40 dark:backdrop:bg-neutral-950/60">
+      <h2 id="new-api-key-heading" class="<%= ui(:subheading) %>">Create API key</h2>
+      <%= form_with url: api_keys_path, scope: :api_key, class: "mt-4" do |f| %>
+        <%= f.label :name, "Key name", class: ui(:label) %>
+        <%= f.text_field :name, placeholder: "CI deploy", autofocus: true, class: "#{ui(:input)} mt-1.5" %>
+        <p class="mt-1.5 <%= ui(:hint) %>">Names are for you — they show up in this list and nowhere else.</p>
+        <div class="mt-5 flex justify-end gap-3">
+          <button type="button" data-action="dialog#close" class="<%= ui(:button_secondary) %>">Cancel</button>
+          <%= f.submit "Create key", class: ui(:button_primary) %>
+        </div>
+      <% end %>
+    </dialog>
+  </div>
+
   <p class="mt-1 max-w-2xl <%= ui(:hint) %>">
     Keys authenticate against the REST API at <code>/api/v1</code>. Send one as
     <code>Authorization: Bearer &lt;key&gt;</code>.
@@ -18,34 +38,22 @@
     </div>
   <% end %>
 
-  <div class="mt-6 max-w-2xl rounded-xl p-4 inset-ring inset-ring-neutral-950/10 dark:inset-ring-white/10">
-    <%= form_with url: api_keys_path, scope: :api_key do |f| %>
-      <div class="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
-        <div>
-          <%= f.label :name, "Key name", class: ui(:label) %>
-          <%= f.text_field :name, placeholder: "CI deploy", class: "#{ui(:input)} mt-1.5" %>
-        </div>
-        <%= f.submit "Create key", class: ui(:button_primary) %>
-      </div>
-      <p class="mt-3 <%= ui(:hint) %>">Names are for you — they show up in this list and nowhere else.</p>
-    <% end %>
-  </div>
-
-  <% if @api_keys.empty? %>
-    <p class="mt-6 <%= ui(:hint) %>">No API keys yet.</p>
-  <% else %>
-    <div class="mt-6 <%= ui(:scroller) %>">
-      <div class="<%= ui(:scroller_inner) %>">
-        <table class="w-full text-sm">
-          <thead class="<%= ui(:table_head) %>">
-            <tr>
-              <th class="<%= ui(:th) %> w-full pr-6">Name</th>
-              <th class="<%= ui(:th) %> w-px pr-6">Key</th>
-              <th class="<%= ui(:th) %> w-px pr-6">Created</th>
-              <th class="<%= ui(:th) %> w-px text-right"><span class="sr-only">Actions</span></th>
-            </tr>
-          </thead>
-          <tbody class="<%= ui(:table_body) %>">
+  <div class="mt-6 <%= ui(:scroller) %>">
+    <div class="<%= ui(:scroller_inner) %>">
+      <table class="w-full text-sm">
+        <thead class="<%= ui(:table_head) %>">
+          <tr>
+            <th class="<%= ui(:th) %> w-full pr-6">Name</th>
+            <th class="<%= ui(:th) %> w-px pr-6">Key</th>
+            <th class="<%= ui(:th) %> w-px pr-6">Created</th>
+            <th class="<%= ui(:th) %> w-px text-right"><span class="sr-only">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody class="<%= ui(:table_body) %>">
+          <% if @api_keys.empty? %>
+            <%= render "shared/empty_row", colspan: 4, title: "No API keys yet",
+                  body: "Create a key to authenticate requests from your own scripts or CI." %>
+          <% else %>
             <% @api_keys.each do |api_key| %>
               <tr class="<%= "text-neutral-400 dark:text-neutral-500" unless api_key.active? %>">
                 <td class="<%= ui(:td) %> w-full pr-6 font-medium"><%= api_key.name %></td>
@@ -62,32 +70,33 @@
                 </td>
               </tr>
             <% end %>
-          </tbody>
-        </table>
-      </div>
+          <% end %>
+        </tbody>
+      </table>
     </div>
-  <% end %>
+  </div>
 
   <section class="mt-10">
     <h2 class="<%= ui(:subheading) %>">CLI tokens</h2>
     <p class="mt-1 max-w-2xl <%= ui(:hint) %>">Issued by <code>hookrail login</code>, one per machine.</p>
 
-    <% if @cli_tokens.empty? %>
-      <p class="mt-4 <%= ui(:hint) %>">No CLI tokens yet.</p>
-    <% else %>
-      <div class="mt-4 <%= ui(:scroller) %>">
-        <div class="<%= ui(:scroller_inner) %>">
-          <table class="w-full text-sm">
-            <thead class="<%= ui(:table_head) %>">
-              <tr>
-                <th class="<%= ui(:th) %> w-full pr-6">Name</th>
-                <th class="<%= ui(:th) %> w-px pr-6">Token</th>
-                <th class="<%= ui(:th) %> w-px pr-6">User</th>
-                <th class="<%= ui(:th) %> w-px pr-6">Last used</th>
-                <th class="<%= ui(:th) %> w-px text-right"><span class="sr-only">Actions</span></th>
-              </tr>
-            </thead>
-            <tbody class="<%= ui(:table_body) %>">
+    <div class="mt-4 <%= ui(:scroller) %>">
+      <div class="<%= ui(:scroller_inner) %>">
+        <table class="w-full text-sm">
+          <thead class="<%= ui(:table_head) %>">
+            <tr>
+              <th class="<%= ui(:th) %> w-full pr-6">Name</th>
+              <th class="<%= ui(:th) %> w-px pr-6">Token</th>
+              <th class="<%= ui(:th) %> w-px pr-6">User</th>
+              <th class="<%= ui(:th) %> w-px pr-6">Last used</th>
+              <th class="<%= ui(:th) %> w-px text-right"><span class="sr-only">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody class="<%= ui(:table_body) %>">
+            <% if @cli_tokens.empty? %>
+              <%= render "shared/empty_row", colspan: 5, title: "No CLI tokens yet",
+                    body: "Running hookrail login on a machine issues one." %>
+            <% else %>
               <% @cli_tokens.each do |cli_token| %>
                 <tr>
                   <td class="<%= ui(:td) %> w-full pr-6 font-medium"><%= cli_token.name %></td>
@@ -101,10 +110,10 @@
                   </td>
                 </tr>
               <% end %>
-            </tbody>
-          </table>
-        </div>
+            <% end %>
+          </tbody>
+        </table>
       </div>
-    <% end %>
+    </div>
   </section>
 </div>

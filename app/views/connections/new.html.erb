@@ -5,7 +5,8 @@
   </div>
 
   <% if @sources.empty? || @destinations.empty? %>
-    <%# Two CTAs, so this can't use shared/empty_state — same card styling by hand. %>
+    <%# A blocked form, not an empty list — no table to sit inside, and two CTAs,
+        so this is a card of its own rather than shared/empty_row. %>
     <div class="rounded-xl px-6 py-12 text-center inset-ring inset-ring-neutral-950/10 dark:inset-ring-white/10">
       <h2 class="<%= ui(:subheading) %>">Nothing to connect yet</h2>
       <p class="mx-auto mt-1 max-w-sm <%= ui(:hint) %>">You need at least one source and one destination first.</p>

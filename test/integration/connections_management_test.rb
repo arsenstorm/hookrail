@@ -122,6 +122,31 @@ class ConnectionsManagementTest < ActionDispatch::IntegrationTest
     assert_no_match(/>active</, response.body)
   end
 
+  test "index keeps the health line under a paused connection" do
+    sign_in!
+    s, d = pair!(current_project)
+    current_project.connections.create!(source: s, destination: d, status: "paused", unhealthy_since: 2.hours.ago)
+    get connections_path
+    row = css_select("tbody").to_s
+    assert_match ">paused<", row
+    assert_match ">unhealthy<", row
+    assert_match "failing since", row
+  end
+
+  test "index drops the health line for a disabled connection" do
+    sign_in!
+    s, d = pair!(current_project)
+    current_project.connections.create!(source: s, destination: d, status: "disabled", unhealthy_since: 2.hours.ago)
+    get connections_path
+    # A disabled connection isn't delivering, so its last health is stale noise —
+    # dropped from the row and from the banner above the table alike.
+    row = css_select("tbody").to_s
+    assert_match ">disabled<", row
+    assert_no_match(/unhealthy/, row)
+    assert_no_match(/failing since/, row)
+    assert_no_match "failing delivery", response.body
+  end
+
   test "new offers both creation links when there is nothing to connect" do
     sign_in!
     get new_connection_path

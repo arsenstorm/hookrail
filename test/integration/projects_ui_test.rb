@@ -25,6 +25,19 @@ class ProjectsUiTest < ActionDispatch::IntegrationTest
     user
   end
 
+  test "the index offers a create dialog and a per-row actions menu" do
+    owner = make_user!("owner0")
+    project = owner.organization.projects.first
+    sign_in_as!(owner)
+
+    get projects_path
+    assert_response :ok
+    assert_select "button[data-action=?]", "dialog#open", text: "New project"
+    assert_select "button[aria-label=?]", "Project actions", count: 1
+    assert_select "[role=menu] button[data-action=?]", "dialog#open dropdown#toggle", text: "Rename"
+    assert_select "dialog form[action=?]", project_path(project)
+  end
+
   test "owner creates a project and cannot duplicate a name case-insensitively" do
     owner = make_user!("owner1")
     sign_in_as!(owner)

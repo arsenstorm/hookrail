@@ -23,6 +23,16 @@ class SourcesManagementTest < ActionDispatch::IntegrationTest
     User.find_by(github_uid: "12345").organization.projects.first
   end
 
+  test "an empty index keeps the table header and puts the empty state in a row" do
+    sign_in!
+
+    get sources_path
+    assert_response :ok
+    assert_select "table thead th", text: "Ingest URL"
+    assert_select "table tbody td[colspan=4]", text: /No sources yet/
+    assert_select "table tbody a[href=?]", new_source_path, text: "New source"
+  end
+
   test "creates a source" do
     sign_in!
     assert_difference -> { current_project.sources.count }, 1 do

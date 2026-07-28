@@ -10,23 +10,23 @@
     </div>
   </div>
 
-  <% if @sources.empty? %>
-    <%= render "shared/empty_state", title: "No sources yet",
-          body: "A source gives you an ingest URL that accepts webhooks from a provider.",
-          cta_label: "New source", cta_path: new_source_path %>
-  <% else %>
-    <div class="<%= ui(:scroller) %>">
-      <div class="<%= ui(:scroller_inner) %>">
-        <table class="w-full text-sm">
-          <thead class="<%= ui(:table_head) %>">
-            <tr>
-              <th class="<%= ui(:th) %> w-full pr-6">Name</th>
-              <th class="<%= ui(:th) %> w-px pr-6">Ingest URL</th>
-              <th class="<%= ui(:th) %> w-px pr-6">Created</th>
-              <th class="<%= ui(:th) %> w-px text-right"><span class="sr-only">Actions</span></th>
-            </tr>
-          </thead>
-          <tbody class="<%= ui(:table_body) %>">
+  <div class="<%= ui(:scroller) %>">
+    <div class="<%= ui(:scroller_inner) %>">
+      <table class="w-full text-sm">
+        <thead class="<%= ui(:table_head) %>">
+          <tr>
+            <th class="<%= ui(:th) %> w-full pr-6">Name</th>
+            <th class="<%= ui(:th) %> w-px pr-6">Ingest URL</th>
+            <th class="<%= ui(:th) %> w-px pr-6">Created</th>
+            <th class="<%= ui(:th) %> w-px text-right"><span class="sr-only">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody class="<%= ui(:table_body) %>">
+          <% if @sources.empty? %>
+            <%= render "shared/empty_row", colspan: 4, title: "No sources yet",
+                  body: "A source gives you an ingest URL that accepts webhooks from a provider.",
+                  cta_label: "New source", cta_path: new_source_path %>
+          <% else %>
             <% @sources.each do |source| %>
               <tr>
                 <td class="<%= ui(:td) %> w-full pr-6">
@@ -46,9 +46,9 @@
                 </td>
               </tr>
             <% end %>
-          </tbody>
-        </table>
-      </div>
+          <% end %>
+        </tbody>
+      </table>
     </div>
-  <% end %>
+  </div>
 </div>

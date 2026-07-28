@@ -72,16 +72,35 @@
   </div>
 
   <% if @events.empty? %>
-    <div class="mt-6 rounded-xl px-6 py-16 text-center inset-ring inset-ring-neutral-950/10 dark:inset-ring-white/10">
-      <% if @filters_active %>
-        <p class="<%= ui(:section) %>">No events match these filters</p>
-        <p class="mx-auto mt-1 max-w-sm <%= ui(:hint) %>">Widen the date range or clear the filters to see everything this project has received.</p>
-        <%= link_to "Clear filters", events_path, class: "#{ui(:button_secondary)} mt-4" %>
-      <% else %>
-        <p class="<%= ui(:section) %>">No events yet</p>
-        <p class="mx-auto mt-1 max-w-sm <%= ui(:hint) %>">Point a webhook at one of your source URLs and every request lands here within seconds.</p>
-        <%= link_to "View sources", sources_path, class: "#{ui(:button_secondary)} mt-4" %>
-      <% end %>
+    <%# No rows means no selection, no bulk actions and no count line — so the
+        empty table drops the form, the bar and the checkbox column with them. %>
+    <%
+      empty = if @filters_active
+        { title: "No events match these filters",
+          body: "Widen the date range or clear the filters to see everything this project has received.",
+          cta_label: "Clear filters", cta_path: events_path, gated: false }
+      else
+        { title: "No events yet",
+          body: "Point a webhook at one of your source URLs and every request lands here within seconds.",
+          cta_label: "View sources", cta_path: sources_path, gated: false }
+      end
+    %>
+    <div class="mt-6 <%= ui(:scroller) %>">
+      <div class="<%= ui(:scroller_inner) %>">
+        <table class="w-full text-sm">
+          <thead class="<%= ui(:table_head) %>">
+            <tr>
+              <th class="<%= ui(:th) %> w-px pr-6">Received</th>
+              <th class="<%= ui(:th) %> w-px pr-6">Method</th>
+              <th class="<%= ui(:th) %> w-full">Source</th>
+              <th class="<%= ui(:th) %> w-px text-right">Delivery</th>
+            </tr>
+          </thead>
+          <tbody class="<%= ui(:table_body) %>">
+            <%= render "shared/empty_row", colspan: 4, **empty %>
+          </tbody>
+        </table>
+      </div>
     </div>
   <% else %>
     <%# Bulk actions follow the selection, so the whole table lives in one form:

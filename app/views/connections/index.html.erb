@@ -15,22 +15,23 @@
 
   <%= render "shared/unhealthy_banner", link: false %>
 
-  <% if @connections.empty? %>
-    <%= render "shared/empty_state", title: "No connections yet",
-          body: "A connection routes events from a source to a destination, with optional filters and transformations.",
-          cta_label: "New connection", cta_path: new_connection_path %>
-  <% else %>
-    <div class="<%= ui(:scroller) %>">
-      <div class="<%= ui(:scroller_inner) %>">
-        <table class="w-full text-sm">
-          <thead class="<%= ui(:table_head) %>">
-            <tr>
-              <th class="<%= ui(:th) %> w-full pr-6">Route</th>
-              <th class="<%= ui(:th) %> w-px pr-6">Status</th>
-              <th class="<%= ui(:th) %> w-px text-right"><span class="sr-only">Actions</span></th>
-            </tr>
-          </thead>
-          <tbody class="<%= ui(:table_body) %>">
+  <div class="<%= ui(:scroller) %>">
+    <div class="<%= ui(:scroller_inner) %>">
+      <table class="w-full text-sm">
+        <thead class="<%= ui(:table_head) %>">
+          <tr>
+            <th class="<%= ui(:th) %> w-full pr-6">Route</th>
+            <th class="<%= ui(:th) %> w-px pr-6">Status</th>
+            <th class="<%= ui(:th) %> w-px text-right"><span class="sr-only">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody class="<%= ui(:table_body) %>">
+          <% if @connections.empty? %>
+            <%= render "shared/empty_row", colspan: 3,
+                  title: "No connections yet",
+                  body: "A connection routes events from a source to a destination, with optional filters and transformations.",
+                  cta_label: "New connection", cta_path: new_connection_path %>
+          <% else %>
             <% @connections.each do |connection| %>
               <tr>
                 <td class="<%= ui(:td) %> w-full pr-6">
@@ -52,8 +53,10 @@
                   </div>
                 </td>
                 <td class="<%= ui(:td) %> w-px pr-6">
-                  <%# An active connection reports its health; a paused or disabled one
-                      reports that state, with health underneath if it is failing. %>
+                  <%# An active connection reports its health. A paused one reports that
+                      state, with health underneath if it is failing. A disabled one isn't
+                      delivering at all, so its health would be stale — it reports only
+                      "disabled". %>
                   <% if connection.unhealthy? %>
                     <% unhealthy = capture do %>
                       <span class="<%= ui(:badge) %> <%= ui(:badge_red) %>">unhealthy</span>
@@ -72,7 +75,7 @@
                     <% else %>
                       <span class="<%= ui(:badge) %> <%= ui(:badge_neutral) %>">disabled</span>
                     <% end %>
-                    <% if connection.unhealthy? %>
+                    <% if connection.status_paused? && connection.unhealthy? %>
                       <div class="mt-1 flex items-center gap-1.5"><%= unhealthy %></div>
                     <% end %>
                   <% end %>
@@ -104,9 +107,9 @@
                 </td>
               </tr>
             <% end %>
-          </tbody>
-        </table>
-      </div>
+          <% end %>
+        </tbody>
+      </table>
     </div>
-  <% end %>
+  </div>
 </div>
