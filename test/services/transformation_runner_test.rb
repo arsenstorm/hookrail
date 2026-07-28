@@ -75,6 +75,16 @@ class TransformationRunnerTest < ActiveSupport::TestCase
     assert_equal "timed out after 1000ms", error.message
   end
 
+  # Allocation outruns the clock: without a heap ceiling this exhausts the
+  # worker's memory before the 1s timeout gets a chance to fire.
+  test "runaway allocation raises rather than taking the worker down" do
+    event = build_event(body: "plain")
+    code = "function transform(r) { var a = []; while (true) { a.push(new Array(1000000).fill(1)); } }"
+
+    error = assert_raises(Transformation::Error) { Transformation::Runner.run(code, event) }
+    assert_equal "used more than 64MB of memory", error.message
+  end
+
   test "check! requires a transform function and validates syntax" do
     error = assert_raises(Transformation::Error) { Transformation::Runner.check!("var x = 1") }
     assert_equal "must define a transform function", error.message

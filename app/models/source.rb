@@ -8,7 +8,11 @@ class Source < ApplicationRecord
   validates :name, presence: true
 
   # Generates a unique 24-char token in before_create; DB unique index enforces integrity.
+  # The token is a public URL component, not a secret, so it stays in the clear
+  # for lookup; the shared signing secret inside `verification` does not.
   has_secure_token :token
+
+  encrypts :verification
 
   store_accessor :verification, :provider, :secret, :header, :algorithm, :encoding,
                  :header_format, :signature_prefix, :signature_key,

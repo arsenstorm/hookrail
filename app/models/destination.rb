@@ -6,6 +6,16 @@ class Destination < ApplicationRecord
 
   validates :name, presence: true
   validates :url, presence: true, if: :kind_http?
+  # Syntax-level SSRF guard so the form rejects obvious local targets; the
+  # authoritative check resolves the host at delivery time in
+  # Delivery::AddressGuard.
+  validate :url_is_public, if: -> { kind_http? && url.present? }
+
+  # Credentials and signing material: encrypted at rest so a database dump
+  # does not hand over every tenant's secrets. None are looked up by value,
+  # so non-deterministic encryption costs nothing.
+  encrypts :signing_secret
+  encrypts :auth
 
   # Secret used to HMAC-sign forwarded payloads; auto-generated, DB unique index enforces integrity.
   has_secure_token :signing_secret
@@ -68,6 +78,12 @@ class Destination < ApplicationRecord
   end
 
   private
+
+  def url_is_public
+    Delivery::AddressGuard.check_url!(url)
+  rescue Delivery::AddressGuard::BlockedError => e
+    errors.add(:url, e.message)
+  end
 
   def rate_limit_bounds
     return if rate_limit.blank?

@@ -34,9 +34,14 @@ module Delivery
 
     def deliver
       uri = URI.parse(@destination.url)
+      # Resolve and validate before connecting, then pin the address so
+      # Net::HTTP cannot re-resolve to somewhere else between check and
+      # connect. Host header and TLS SNI still come from the URL.
+      address = AddressGuard.resolve!(@destination.url)
       request = build_request(uri, payload)
 
       http = Net::HTTP.new(uri.host, uri.port)
+      http.ipaddr = address
       http.use_ssl = (uri.scheme == "https")
       http.open_timeout = TIMEOUT_SECONDS
       http.read_timeout = TIMEOUT_SECONDS

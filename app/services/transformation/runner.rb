@@ -6,6 +6,10 @@ module Transformation
   # deliveries always go to the destination's URL.
   class Runner
     TIMEOUT_MS = 1_000
+    # Allocation outruns the clock: `while (true) a.push(new Array(1e6))` can
+    # exhaust the worker's memory long before the timeout fires, so the isolate
+    # needs a heap ceiling of its own.
+    MAX_MEMORY_BYTES = 64 * 1024 * 1024
 
     def self.run(code, event)
       new(code).run(event)
@@ -46,7 +50,7 @@ module Transformation
     private
 
     def build_context
-      context = MiniRacer::Context.new(timeout: TIMEOUT_MS)
+      context = MiniRacer::Context.new(timeout: TIMEOUT_MS, max_memory: MAX_MEMORY_BYTES)
       context.eval(@code)
       context
     end
@@ -89,6 +93,7 @@ module Transformation
     def error_message(error)
       case error
       when MiniRacer::ScriptTerminatedError then "timed out after #{TIMEOUT_MS}ms"
+      when MiniRacer::V8OutOfMemoryError then "used more than #{MAX_MEMORY_BYTES / 1024 / 1024}MB of memory"
       else error.message.to_s
       end
     end

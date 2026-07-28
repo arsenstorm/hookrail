@@ -4,6 +4,17 @@ require "rails/test_help"
 require "webmock/minitest"
 WebMock.disable_net_connect!(allow_localhost: true)
 
+# WebMock stubs HTTP, not DNS, and Delivery::AddressGuard resolves before it
+# connects. Answer from a table instead so the suite needs no network: literal
+# addresses pass through, any hostname looks public. Tests that care what a
+# host resolves to swap this out themselves.
+Delivery::AddressGuard.resolver = lambda do |host|
+  IPAddr.new(host)
+  [ host ]
+rescue IPAddr::Error
+  [ "93.184.216.34" ]
+end
+
 module ActiveSupport
   class TestCase
     # Run tests in parallel with specified workers

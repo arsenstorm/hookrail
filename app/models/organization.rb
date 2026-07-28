@@ -9,6 +9,9 @@ class Organization < ApplicationRecord
 
   validates :name, presence: true
 
+  # Shared secret used to sign outbound alert webhooks; never looked up by value.
+  encrypts :alert_webhook_secret
+
   validates :alert_webhook_url, format: { with: %r{\Ahttps?://\S+\z}i, message: "must be an http(s) URL" },
             allow_blank: true
 
