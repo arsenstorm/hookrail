@@ -9,6 +9,15 @@ module Ingest
 
     ALGORITHMS = { "sha1" => "SHA1", "sha256" => "SHA256", "sha512" => "SHA512" }.freeze
 
+    # Applied whenever a request carries a timestamp but the source never set a
+    # window. Without it a captured request replays forever: a signature alone
+    # says "this body is authentic", never "this delivery is fresh".
+    DEFAULT_TOLERANCE_SECONDS = 300
+
+    # A timestamp is interpolated into the signed payload, so it has to be
+    # exactly a number. Anything else lets it carry template-significant bytes.
+    NUMERIC = /\A\d+\z/
+
     def self.verify(source:, request:, body:)
       new(source, request, body).verify
     end
@@ -28,9 +37,16 @@ module Ingest
       return fail!("no signature found in #{header_name} header") if signatures.empty?
 
       timestamp = explicit_timestamp || embedded_timestamp
-      if (tolerance = @source.verification_tolerance_seconds.presence)
-        return fail!("missing timestamp") if timestamp.blank?
-        return fail!("timestamp outside tolerance") if (Time.current.to_i - timestamp.to_i).abs > tolerance.to_i
+      configured_tolerance = @source.verification_tolerance_seconds.presence
+
+      # Fail closed when a timestamp was configured but did not arrive.
+      return fail!("missing timestamp") if configured_tolerance && timestamp.blank?
+
+      if timestamp.present?
+        return fail!("malformed timestamp") unless timestamp.to_s.match?(NUMERIC)
+
+        tolerance = (configured_tolerance || DEFAULT_TOLERANCE_SECONDS).to_i
+        return fail!("timestamp outside tolerance") if (Time.current.to_i - timestamp.to_i).abs > tolerance
       end
 
       expected = compute(signed_payload(timestamp))
@@ -69,11 +85,21 @@ module Ingest
       header && @request.headers[header].presence
     end
 
-    # Block form of gsub: the body may contain backslash sequences that the
+    # One pass over the template, so a value substituted for one placeholder is
+    # never rescanned for another. Two chained gsubs let an attacker move the
+    # field boundary: with the template "{timestamp}.{body}", sending
+    # timestamp="1700000000.{"amount":10" and the rest of the body separately
+    # reconstructs byte-identical signed bytes, so the HMAC still verifies while
+    # the body actually stored and forwarded has been truncated.
+    #
+    # Block form of sub: the body may contain backslash sequences that the
     # string-replacement form would interpret as backreferences.
+    PLACEHOLDER = /\{(timestamp|body)\}/
+
     def signed_payload(timestamp)
       template = @source.verification_payload_template.presence || "{body}"
-      template.gsub("{timestamp}") { timestamp.to_s }.gsub("{body}") { @body }
+      values = { "timestamp" => timestamp.to_s, "body" => @body }
+      template.gsub(PLACEHOLDER) { values.fetch(Regexp.last_match(1)) }
     end
 
     def compute(payload)

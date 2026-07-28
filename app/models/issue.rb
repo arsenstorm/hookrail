@@ -20,13 +20,15 @@ class Issue < ApplicationRecord
     keys = { issue_type: type.to_s, subject_type: subject.class.name, subject_id: subject.id }
     loop do
       bumped = unresolved.where(keys).update_all([ "count = count + 1, last_seen_at = ?", Time.current ])
-      return if bumped == 1
+      return nil if bumped == 1
 
       begin
         issue = create!(keys.merge(project_id: subject.project_id, summary: summary,
                                    first_seen_at: Time.current, last_seen_at: Time.current))
         Alerts.issue_opened(issue)
-        return
+        # Returned so a caller can hang its own notification off the same
+        # one-per-open-issue dedupe this already applies to chat.
+        return issue
       rescue ActiveRecord::RecordNotUnique
         # Lost the create race; the winner's row takes the increment next pass.
       end

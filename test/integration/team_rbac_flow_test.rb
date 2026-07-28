@@ -216,7 +216,14 @@ class TeamRbacFlowTest < ActionDispatch::IntegrationTest
     get invite_path(invitation.token)
     assert_redirected_to sign_in_path
 
+    # Signing in lands on the confirmation screen. Nothing is joined until the
+    # POST, so following a link alone cannot move someone into another org.
     newbie = sign_in_new!("newbie", "newbie@example.com")
+    assert_redirected_to invite_path(invitation.token)
+    assert_nil alice.organization.memberships.find_by(user: newbie),
+      "signing in must not accept the invitation by itself"
+
+    post invite_path(invitation.token)
     membership = alice.organization.memberships.find_by(user: newbie)
     assert membership, "expected the invitation to create a membership in alice's org"
     assert_equal "member", membership.role
@@ -233,6 +240,7 @@ class TeamRbacFlowTest < ActionDispatch::IntegrationTest
     assert_redirected_to sign_in_path
 
     wrong = sign_in_new!("wrong", "wrong@example.com")
+    post invite_path(other.token)
     assert_nil alice.organization.memberships.find_by(user: wrong)
     assert Invitation.exists?(other.id), "a mismatched email must leave the invitation pending"
   end
@@ -246,6 +254,7 @@ class TeamRbacFlowTest < ActionDispatch::IntegrationTest
     assert_redirected_to sign_in_path
 
     late = sign_in_new!("late", "late@example.com")
+    post invite_path(invitation.token)
     assert_nil alice.organization.memberships.find_by(user: late)
 
     follow_redirect!

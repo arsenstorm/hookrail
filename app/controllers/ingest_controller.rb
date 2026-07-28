@@ -3,6 +3,26 @@ class IngestController < ActionController::Base
   skip_forgery_protection
 
   MAX_BODY_BYTES = 5.megabytes
+  # Generous enough that no real provider trips it, low enough that a single
+  # token cannot be used to fill the database. Keyed per source token, so one
+  # noisy sender cannot starve another tenant.
+  MAX_REQUESTS_PER_MINUTE = 600
+
+  # Runs before anything touches `params`, because reading params parses the
+  # request body: a 100MB JSON post would be inflated into an object graph
+  # before a size check on the parsed result could ever reject it.
+  before_action :reject_oversized_body
+
+  rate_limit to: MAX_REQUESTS_PER_MINUTE, within: 1.minute,
+             by: -> { request.path_parameters[:token] },
+             with: -> { head :too_many_requests }
+
+  # Headers that authenticate the *sender to us*. Storing them would keep a
+  # third party's credential in cleartext forever, render it to every project
+  # viewer, and return it from the events API; forwarding them would leak it to
+  # the destination, which has its own credentials.
+  SENSITIVE_HEADERS = %w[Authorization Proxy-Authorization Cookie].freeze
+  REDACTED = "[redacted]".freeze
 
   def create
     source = Source.find_by(token: params[:token])
@@ -61,6 +81,14 @@ class IngestController < ActionController::Base
 
   private
 
+  # Content-Length is a claim, not a guarantee, so the real body is still
+  # measured after reading; this only stops us buffering and parsing an
+  # obviously oversized request in the first place.
+  def reject_oversized_body
+    declared = request.content_length.to_i
+    head(:payload_too_large) if declared > MAX_BODY_BYTES
+  end
+
   # Reconstruct the incoming HTTP headers from the Rack env.
   def captured_headers
     request.headers.env.each_with_object({}) do |(key, value), acc|
@@ -68,7 +96,7 @@ class IngestController < ActionController::Base
       next unless value.is_a?(String)
 
       name = key.delete_prefix("HTTP_").split("_").map(&:capitalize).join("-")
-      acc[name] = value
+      acc[name] = SENSITIVE_HEADERS.include?(name) ? REDACTED : value
     end
   end
 end

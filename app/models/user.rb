@@ -5,6 +5,12 @@ class User < ApplicationRecord
 
   validates :github_uid, presence: true, uniqueness: true
 
+  # Ties issued session cookies to something revocable server-side: rotate it
+  # and every cookie carrying the old value stops authenticating.
+  has_secure_token :session_token
+
+  def rotate_session_token! = regenerate_session_token
+
   # Find-or-create a user from a GitHub OmniAuth payload, ensuring the personal
   # organization and its default project exist. Idempotent per github_uid.
   def self.from_omniauth(auth)

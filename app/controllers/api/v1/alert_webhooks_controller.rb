@@ -1,6 +1,10 @@
 module Api
   module V1
     class AlertWebhooksController < BaseController
+      # Org-wide alerting, and `show` hands back the signing secret — both need
+      # an org role, matching require_org_admin on the web controller.
+      before_action :require_org_admin!
+
       # The secret is returned here, unlike destination signing secrets:
       # receivers are configured by the same operator who reads this endpoint,
       # and the UI shows it alongside the URL for the same reason.

@@ -13,6 +13,19 @@ module Api
 
       private
 
+      # Organization-wide settings need an organization-wide role. Project
+      # grants say nothing about the org, so a project editor must not be able
+      # to change retention or alerting for every project in it. `hk_` API keys
+      # are admin-issued and documented as full-org access, so they pass; `hkc_`
+      # CLI tokens carry a user, and that user's membership decides.
+      def require_org_admin!
+        return unless @cli_token
+        return if Current.membership&.admin_or_owner?
+
+        render_error(:forbidden, "forbidden",
+                     "This setting is organization-wide and requires an admin role")
+      end
+
       # Bearer credential -> org -> the optional project_id parameter picks
       # the project, defaulting to the first. Two credential kinds: org-wide
       # "hk_" API keys (admin-issued, full access) and per-user "hkc_" CLI

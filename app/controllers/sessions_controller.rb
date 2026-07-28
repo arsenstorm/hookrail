@@ -9,21 +9,20 @@ class SessionsController < ApplicationController
     user = User.from_omniauth(request.env["omniauth.auth"])
     reset_session
     session[:user_id] = user.id
-    if invite_token && (invitation = Invitation.find_by(token: invite_token))
-      case (result = invitation.accept!(user))
-      when Membership
-        session[:organization_id] = result.organization_id
-        return redirect_to dashboard_path, notice: "Joined #{result.organization.name}."
-      when :expired
-        return redirect_to dashboard_path, alert: "That invitation has expired."
-      when :email_mismatch
-        return redirect_to dashboard_path, alert: "That invitation was issued to a different email address."
-      end
-    end
+    session[:session_token] = user.session_token
+    # A parked invite goes to its confirmation screen rather than being accepted
+    # here: signing in is consent to sign in, not to join someone's organization.
+    return redirect_to(invite_path(invite_token)) if invite_token && Invitation.exists?(token: invite_token)
+
     redirect_to dashboard_path, notice: "Signed in as #{user.github_login}"
   end
 
+  # Rotating the token invalidates every cookie issued to this user, not just
+  # the one in this browser. That is the point: a cookie copied off a shared
+  # machine is exactly what signing out should revoke, and we cannot tell the
+  # copies apart. The cost is that signing out signs out your other devices.
   def destroy
+    Current.user&.rotate_session_token!
     reset_session
     redirect_to sign_in_path, notice: "Signed out"
   end

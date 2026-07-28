@@ -12,9 +12,12 @@ module Delivery
     # destinations (they answer 403), and an explicit Accept-Encoding disables
     # Net::HTTP's transparent decompression, landing compressed bytes in
     # response_body. Compared case-insensitively.
+    # Also dropped: headers that authenticated the sender to us. They are the
+    # sender's credential, not ours to forward, and the destination has its own
+    # auth configured on the destination record.
     SKIP_FORWARD_HEADERS = %w[host content-length connection transfer-encoding keep-alive
                               accept-encoding x-real-ip x-request-start x-sendfile-type
-                              cdn-loop].freeze
+                              cdn-loop authorization proxy-authorization cookie].freeze
     SKIP_FORWARD_PREFIXES = %w[cf- x-forwarded- x-railway-].freeze
 
     def self.deliver(event:, destination:, replay: false, transformed: nil)

@@ -21,17 +21,25 @@
     <% end %>
   </section>
 
-  <section class="my-8">
-    <h2 class="mb-2 text-sm font-semibold text-neutral-950 dark:text-white">Signing secret</h2>
-    <div class="flex gap-2 max-w-2xl">
-      <input type="text" readonly id="signing-secret" value="<%= @destination.signing_secret %>"
-             class="<%= ui(:input) %> bg-neutral-950/5 dark:bg-white/5">
-      <button type="button"
-              onclick="navigator.clipboard.writeText(document.getElementById('signing-secret').value)"
-              class="<%= ui(:button_secondary) %> whitespace-nowrap">Copy</button>
-    </div>
-    <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-1">Used to HMAC-sign forwarded payloads.</p>
-  </section>
+  <%# Editors only: the JSON API deliberately never serialises this, and a
+      viewer holding it could forge traffic to the receiver directly. %>
+  <% if can_edit? %>
+    <section class="my-8">
+      <h2 class="mb-2 text-sm font-semibold text-neutral-950 dark:text-white">Signing secret</h2>
+      <div class="flex gap-2 max-w-2xl">
+        <input type="text" readonly id="signing-secret" value="<%= @destination.signing_secret %>"
+               class="<%= ui(:input) %> bg-neutral-950/5 dark:bg-white/5">
+        <button type="button" data-controller="clipboard"
+                data-clipboard-text-value="<%= @destination.signing_secret %>"
+                data-action="clipboard#copy"
+                class="<%= ui(:button_secondary) %> whitespace-nowrap">
+          <span data-clipboard-target="copy">Copy</span>
+          <span data-clipboard-target="done" class="hidden">Copied</span>
+        </button>
+      </div>
+      <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-1">Used to HMAC-sign forwarded payloads.</p>
+    </section>
+  <% end %>
 
   <div class="flex items-center gap-3">
     <% if can_edit? %>

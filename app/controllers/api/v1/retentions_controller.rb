@@ -1,6 +1,11 @@
 module Api
   module V1
     class RetentionsController < BaseController
+      # Retention is org-wide, and shrinking it deletes history across every
+      # project in the org — the web controller gates this behind
+      # require_org_admin, and this one drifted from it.
+      before_action :require_org_admin!
+
       def show = render_retention
 
       def update

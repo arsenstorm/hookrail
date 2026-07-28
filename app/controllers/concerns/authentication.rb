@@ -24,6 +24,12 @@ module Authentication
 
     user = User.find_by(id: user_id)
     return unless user
+    # The cookie must still match the user's current session token, so signing
+    # out invalidates copies of the cookie we will never see again.
+    return unless session[:session_token].present? &&
+                  ActiveSupport::SecurityUtils.secure_compare(
+                    session[:session_token].to_s, user.session_token.to_s
+                  )
 
     Current.user = user
     # The session may name an org; it counts only if a membership backs it.

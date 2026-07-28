@@ -1,29 +1,32 @@
 # Be sure to restart your server when you modify this file.
+#
+# Defence in depth behind Rails' output escaping: this app stores bodies and
+# headers posted by arbitrary third parties and renders them back, so if an
+# escaping bug ever lands, script-src is what stops it becoming account
+# takeover.
+#
+# Scripts are nonce-only — no 'unsafe-inline', which is the whole point;
+# importmap and the pre-paint theme script both carry the nonce. Styles do
+# allow inline, because Turbo and the chart code set style attributes and
+# locking that down buys far less than locking down script.
+Rails.application.configure do
+  config.content_security_policy do |policy|
+    policy.default_src :self
+    policy.base_uri    :self
+    policy.form_action :self
+    policy.frame_ancestors :none
+    policy.object_src  :none
+    policy.script_src  :self
+    policy.style_src   :self, :unsafe_inline, "https://rsms.me"
+    policy.font_src    :self, :data, "https://rsms.me"
+    # GitHub avatars, plus data: for inline SVG/PNG.
+    policy.img_src     :self, :data, "https://avatars.githubusercontent.com"
+    # :self covers same-origin ws:// for Action Cable.
+    policy.connect_src :self
+  end
 
-# Define an application-wide content security policy.
-# See the Securing Rails Applications Guide for more information:
-# https://guides.rubyonrails.org/security.html#content-security-policy-header
-
-# Rails.application.configure do
-#   config.content_security_policy do |policy|
-#     policy.default_src :self, :https
-#     policy.font_src    :self, :https, :data
-#     policy.img_src     :self, :https, :data
-#     policy.object_src  :none
-#     policy.script_src  :self, :https
-#     policy.style_src   :self, :https
-#     # Specify URI for violation reports
-#     # policy.report_uri "/csp-violation-report-endpoint"
-#   end
-#
-#   # Generate session nonces for permitted importmap, inline scripts, and inline styles.
-#   config.content_security_policy_nonce_generator = ->(request) { request.session.id.to_s }
-#   config.content_security_policy_nonce_directives = %w(script-src style-src)
-#
-#   # Automatically add `nonce` to `javascript_tag`, `javascript_include_tag`, and `stylesheet_link_tag`
-#   # if the corresponding directives are specified in `content_security_policy_nonce_directives`.
-#   # config.content_security_policy_nonce_auto = true
-#
-#   # Report violations without enforcing the policy.
-#   # config.content_security_policy_report_only = true
-# end
+  # A per-request nonce lets the importmap and the theme script run while
+  # everything else inline stays blocked.
+  config.content_security_policy_nonce_generator = ->(request) { request.session.id.to_s }
+  config.content_security_policy_nonce_directives = %w[script-src]
+end

@@ -43,9 +43,13 @@
     <div class="flex gap-2 max-w-2xl">
       <input type="text" readonly id="ingest-url" value="<%= ingest_url(token: @source.token) %>"
              class="<%= ui(:input) %> bg-neutral-950/5 dark:bg-white/5">
-      <button type="button"
-              onclick="navigator.clipboard.writeText(document.getElementById('ingest-url').value)"
-              class="<%= ui(:button_secondary) %> whitespace-nowrap">Copy</button>
+      <button type="button" data-controller="clipboard"
+              data-clipboard-text-value="<%= ingest_url(token: @source.token) %>"
+              data-action="clipboard#copy"
+              class="<%= ui(:button_secondary) %> whitespace-nowrap">
+        <span data-clipboard-target="copy">Copy</span>
+        <span data-clipboard-target="done" class="hidden">Copied</span>
+      </button>
     </div>
     <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-1">POST webhooks here. Rotating the token invalidates this URL.</p>
   </section>

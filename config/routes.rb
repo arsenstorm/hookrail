@@ -63,8 +63,11 @@ Rails.application.routes.draw do
     # and the API keys page, so it stays with the app shell.
     resources :cli_tokens, only: :destroy
 
-    # Accepting an invite: a link a non-admin follows from their inbox.
+    # Accepting an invite: a link a non-admin follows from their inbox. The GET
+    # only renders a confirmation screen; accepting is the POST, because joining
+    # an org switches the user's active org and must not happen on navigation.
     get "invites/:token", to: "invites#show", as: :invite
+    post "invites/:token", to: "invites#create"
 
     # The signed-in user's own profile and credentials.
     resource :account, only: :show do

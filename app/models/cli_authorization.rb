@@ -43,8 +43,12 @@ class CliAuthorization < ApplicationRecord
     result
   end
 
+  # SecureRandom, not Array#sample: sample draws from Ruby's Mersenne Twister,
+  # and this code is what authorises a CLI session. A predictable one lets an
+  # attacker approve someone else's pending flow into an org they control.
   def self.generate_user_code
-    core = Array.new(8) { USER_CODE_ALPHABET.chars.sample }.join
+    alphabet = USER_CODE_ALPHABET.chars
+    core = Array.new(8) { alphabet[SecureRandom.random_number(alphabet.size)] }.join
     "#{core.first(4)}-#{core.last(4)}"
   end
 
