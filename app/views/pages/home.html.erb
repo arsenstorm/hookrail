@@ -301,10 +301,17 @@ Waiting for events… (Ctrl-C to stop)</pre>
       <%= render "shared/logo_mark", class: "size-5" %>
       © <%= Date.current.year %> Hookrail
     </span>
-    <% if current_user %>
-      <%= link_to "Dashboard", dashboard_path, class: ui(:muted_link) %>
-    <% else %>
-      <%= link_to "Sign in", sign_in_path, class: ui(:muted_link) %>
-    <% end %>
+    <div class="flex items-center gap-5">
+      <%= link_to "https://github.com/arsenstorm/hookrail", target: "_blank", rel: "noopener",
+            class: "#{ui(:muted_link)} flex items-center gap-1.5" do %>
+        <%= render "sources/provider_logo", provider: "github", class: "size-4" %>
+        GitHub
+      <% end %>
+      <% if current_user %>
+        <%= link_to "Dashboard", dashboard_path, class: ui(:muted_link) %>
+      <% else %>
+        <%= link_to "Sign in", sign_in_path, class: ui(:muted_link) %>
+      <% end %>
+    </div>
   </footer>
 </div>
