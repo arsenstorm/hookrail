@@ -41,6 +41,13 @@ class Delivery::AddressGuardTest < ActiveSupport::TestCase
     assert_raises(Blocked) { Delivery::AddressGuard.check_url!("http://[::ffff:127.0.0.1]/x") }
   end
 
+  # 6to4 and Teredo carry an IPv4 address inside the v6 one, so these are
+  # 127.0.0.1 and 10.0.0.1 in a costume the v4 range check never sees.
+  test "rejects private addresses tunnelled through 6to4 and Teredo" do
+    assert_raises(Blocked) { Delivery::AddressGuard.check_url!("http://[2002:7f00:1::]/x") }
+    assert_raises(Blocked) { Delivery::AddressGuard.check_url!("http://[2001::a00:1]/x") }
+  end
+
   test "rejects hostnames that are local by definition" do
     %w[http://localhost/x http://app.localhost/x http://db.internal/x http://printer.local/x].each do |url|
       assert_raises(Blocked, url) { Delivery::AddressGuard.check_url!(url) }

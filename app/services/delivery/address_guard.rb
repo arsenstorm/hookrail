@@ -22,8 +22,13 @@ module Delivery
       0.0.0.0/8 10.0.0.0/8 100.64.0.0/10 127.0.0.0/8 169.254.0.0/16
       172.16.0.0/12 192.0.0.0/24 192.0.2.0/24 192.168.0.0/16 198.18.0.0/15
       198.51.100.0/24 203.0.113.0/24 224.0.0.0/4 240.0.0.0/4
-      ::/128 ::1/128 64:ff9b::/96 100::/64 2001:db8::/32 fc00::/7 fe80::/10 ff00::/8
+      ::/128 ::1/128 64:ff9b::/96 100::/64 2001::/32 2001:db8::/32 2002::/16
+      fc00::/7 fe80::/10 ff00::/8
     ].map { |range| IPAddr.new(range) }.freeze
+
+    # 6to4 (2002::/16) and Teredo (2001::/32) embed an IPv4 address inside the
+    # v6 one, so 2002:7f00:1:: is a way of writing 127.0.0.1 that a range check
+    # on the v4 list would never see. Both are blocked outright above.
 
     # Hostnames that are local by definition, rejected without a DNS round trip
     # so the form can say no while the user is still looking at it.
