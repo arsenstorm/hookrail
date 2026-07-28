@@ -166,6 +166,8 @@ class SecurityRegressionsTest < ActionDispatch::IntegrationTest
     assert_match(/script-src 'self' 'nonce-/, policy)
     assert_no_match(/script-src[^;]*unsafe-inline/, policy)
     assert_match(/object-src 'none'/, policy)
+    # OAuth kickoff redirects to github.com; form-action is checked on redirects.
+    assert_match(%r{form-action 'self' https://github\.com}, policy)
     # Every inline script must carry the nonce, or the page is broken under it.
     inline_scripts = response.body.scan(/<script(?![^>]*\ssrc=)[^>]*>/)
     assert inline_scripts.any?, "expected at least one inline script to check"

@@ -13,7 +13,10 @@ Rails.application.configure do
   config.content_security_policy do |policy|
     policy.default_src :self
     policy.base_uri    :self
-    policy.form_action :self
+    # Browsers apply form-action to every hop of a redirect chain, so the OAuth
+    # kickoff (POST /auth/github, which 302s to github.com) needs GitHub listed
+    # even though the form itself posts same-origin.
+    policy.form_action :self, "https://github.com"
     policy.frame_ancestors :none
     policy.object_src  :none
     policy.script_src  :self
