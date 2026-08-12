@@ -14,3 +14,10 @@ updates:
   groups:
     github-actions:
       patterns: ["*"]
+- package-ecosystem: cargo
+  directory: "/cli"
+  schedule:
+    interval: weekly
+  groups:
+    crates:
+      patterns: ["*"]
