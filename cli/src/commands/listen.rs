@@ -118,7 +118,7 @@ async fn session(ctx: &Arc<Ctx>, greeted: &mut bool) -> Result<Outcome> {
         listener.subscription.connection_id,
     );
     let mut ws = cable::connect(&listener.websocket_url, &ctx.token, &ctx.origin).await?;
-    ws.send(Message::Text(cable::subscribe_frame(&identifier)))
+    ws.send(Message::Text(cable::subscribe_frame(&identifier).into()))
         .await?;
 
     let mut beat = tokio::time::interval(HEARTBEAT);
@@ -128,7 +128,7 @@ async fn session(ctx: &Arc<Ctx>, greeted: &mut bool) -> Result<Outcome> {
     loop {
         tokio::select! {
             _ = beat.tick() => {
-                ws.send(Message::Text(cable::heartbeat_frame(&identifier))).await?;
+                ws.send(Message::Text(cable::heartbeat_frame(&identifier).into())).await?;
             }
             frame = ws.next() => {
                 let text = match frame {
